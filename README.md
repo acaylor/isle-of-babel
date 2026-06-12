@@ -52,6 +52,9 @@ scenes/island.gd     Procedural island: terrain, lake, mountains, trees,
                      dock, boat, stone circle, tower + summit balcony
 scenes/library.gd    Endless streamed library cells, deterministic per cell
 scripts/forge.gd     Static helpers for procedural geometry
+scripts/flora.gd     Detailed nature meshes: trees, rocks, bushes, grass,
+                     flowers, ridged mountains (hand-computed normals,
+                     per-vertex color)
 scripts/interactable.gd  Raycast-targetable object with prompt + action
 scripts/book_lore.gd Generated titles/authors/excerpts for the shelves
 shaders/water.gdshader   The lake

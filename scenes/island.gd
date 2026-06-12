@@ -8,7 +8,7 @@ const LIBRARY := "res://scenes/library.tscn"
 
 const ISLAND_RADIUS := 70.0
 const TERRAIN_SIZE := 180.0
-const TERRAIN_RES := 110
+const TERRAIN_RES := 150
 const WATER_LEVEL := 0.0
 
 const TOWER_POS := Vector2(0.0, -12.0)
@@ -37,6 +37,9 @@ func _ready() -> void:
 	_build_water()
 	_build_mountains()
 	_build_trees()
+	_build_rocks()
+	_build_bushes()
+	_build_grass()
 	_build_path()
 	_build_tower()
 	_build_dock_and_boat()
@@ -65,6 +68,7 @@ func height_at(x: float, z: float) -> float:
 	var h := smooth_h
 	h += _noise.get_noise_2d(x, z) * 5.0 * clampf(shape + 0.3, 0.0, 1.0)
 	h += _detail.get_noise_2d(x, z) * 0.6 * clampf(shape, 0.0, 1.0)
+	h += _detail.get_noise_2d(x * 3.0, z * 3.0) * 0.18 * clampf(shape, 0.0, 1.0)
 	# Keep the walking route from the dock to the tower gentle.
 	var corridor := smoothstep(5.0, 2.0, absf(x)) * smoothstep(62.0, 56.0, z) * smoothstep(-7.0, -2.0, z)
 	h = lerpf(h, smooth_h, corridor * 0.85)
@@ -82,11 +86,25 @@ func _normal_at(x: float, z: float) -> Vector3:
 
 func _terrain_color(x: float, z: float, h: float, normal_y: float) -> Color:
 	var blotch := (_detail.get_noise_2d(x * 2.0, z * 2.0) + 1.0) * 0.5
-	var c := Color(0.30, 0.47, 0.26).lerp(Color(0.43, 0.55, 0.30), blotch)
+	var c := Color(0.27, 0.45, 0.23).lerp(Color(0.45, 0.56, 0.28), blotch)
+	var dirt := _detail.get_noise_2d(x * 0.45 + 510.0, z * 0.45 - 310.0)
+	c = c.lerp(Color(0.42, 0.33, 0.22), smoothstep(0.30, 0.62, dirt) * 0.55)
 	c = c.lerp(Color(0.78, 0.72, 0.54), smoothstep(1.7, 0.7, h))
+	c = c.lerp(Color(0.55, 0.50, 0.40), smoothstep(0.55, 0.2, h))
 	c = c.lerp(Color(0.47, 0.45, 0.43), smoothstep(0.18, 0.38, 1.0 - normal_y))
 	c = c.lerp(Color(0.38, 0.42, 0.30), smoothstep(8.0, 13.0, h) * 0.4)
 	return c
+
+## Shared exclusion zones so scattered nature never blocks the path, the
+## tower plateau, the stone circle, or the dock approach.
+func _clear_of_landmarks(x: float, z: float) -> bool:
+	if Vector2(x, z).distance_to(TOWER_POS) < 13.5:
+		return false
+	if absf(x) < 5.0 and z > -8.0 and z < 60.0:
+		return false
+	if Vector2(x, z).distance_to(Vector2(34, 18)) < 6.5:
+		return false
+	return true
 
 func _build_terrain() -> void:
 	var st := SurfaceTool.new()
@@ -153,8 +171,8 @@ func _build_environment() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
 	env.fog_enabled = true
-	env.fog_light_color = Color(0.70, 0.75, 0.78)
-	env.fog_density = 0.0016
+	env.fog_light_color = Color(0.72, 0.78, 0.83)
+	env.fog_density = 0.0004
 	env.ssao_enabled = true
 	var we := WorldEnvironment.new()
 	we.environment = env
@@ -169,6 +187,21 @@ func _build_environment() -> void:
 	sun.rotation_degrees = Vector3(-38, -125, 0)
 
 func _build_mountains() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	# Near ring: unique ridged mountains with forested slopes and snow caps.
+	var count := 11
+	for i in count:
+		var angle := TAU * i / count + rng.randf_range(-0.12, 0.12)
+		var dist := rng.randf_range(385.0, 465.0)
+		var height := rng.randf_range(90.0, 185.0)
+		var radius := rng.randf_range(75.0, 125.0)
+		var mi := MeshInstance3D.new()
+		mi.mesh = Flora.mountain_mesh(9000 + i, radius, height, height > 150.0)
+		add_child(mi)
+		mi.position = Vector3(cos(angle) * dist, -8.0, sin(angle) * dist)
+		mi.rotation.y = rng.randf() * TAU
+	# Far ring: hazy simple cones for a second layer of depth.
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.0
 	cone.bottom_radius = 1.0
@@ -178,83 +211,55 @@ func _build_mountains() -> void:
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.use_colors = true
 	mm.mesh = cone
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 4242
-	var count := 64
-	mm.instance_count = count
-	for i in count:
-		var ring := 0 if i < 40 else 1
-		var dist := rng.randf_range(380.0, 470.0) if ring == 0 else rng.randf_range(490.0, 580.0)
+	var far_count := 30
+	mm.instance_count = far_count
+	for i in far_count:
+		var dist := rng.randf_range(530.0, 660.0)
 		var angle := rng.randf() * TAU
-		var height := rng.randf_range(70.0, 150.0) * (1.0 if ring == 0 else 1.4)
-		var radius := rng.randf_range(60.0, 115.0) * (1.0 if ring == 0 else 1.3)
+		var height := rng.randf_range(110.0, 230.0)
+		var radius := rng.randf_range(90.0, 160.0)
 		var pos := Vector3(cos(angle) * dist, height / 2.0 - 10.0, sin(angle) * dist)
 		var basis := Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(radius, height, radius))
 		mm.set_instance_transform(i, Transform3D(basis, pos))
-		var shade := rng.randf_range(0.75, 1.0)
-		var c := Color(0.13, 0.24, 0.18).lerp(Color(0.20, 0.30, 0.34), float(ring))
+		var shade := rng.randf_range(0.85, 1.05)
+		var c := Color(0.24, 0.32, 0.36)
 		mm.set_instance_color(i, Color(c.r * shade, c.g * shade, c.b * shade))
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
-	var mat := Forge.vc_mat(1.0)
-	mmi.material_override = mat
+	mmi.material_override = Forge.vc_mat(1.0)
 	add_child(mmi)
 
 # -- vegetation ------------------------------------------------------------
 
-func _tree_mesh(kind: int) -> ArrayMesh:
-	var bark := Forge.mat(Color(0.34, 0.25, 0.18), 1.0)
-	bark.vertex_color_use_as_albedo = true
-	bark.vertex_color_is_srgb = true
-	var leaf := Forge.mat(Color(0.18, 0.34, 0.16) if kind == 0 else Color(0.28, 0.42, 0.18), 1.0)
-	leaf.vertex_color_use_as_albedo = true
-	leaf.vertex_color_is_srgb = true
+var _tree_spots: Array[Vector3] = []
 
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var trunk := CylinderMesh.new()
-	trunk.top_radius = 0.13
-	trunk.bottom_radius = 0.22
-	trunk.height = 1.8
-	trunk.radial_segments = 7
-	st.append_from(trunk, 0, Transform3D(Basis.IDENTITY, Vector3(0, 0.9, 0)))
-	var mesh := st.commit()
-
-	var st2 := SurfaceTool.new()
-	st2.begin(Mesh.PRIMITIVE_TRIANGLES)
-	if kind == 0:
-		# Pine: stacked cones.
-		var sizes := [Vector2(1.25, 1.7), Vector2(0.95, 1.5), Vector2(0.6, 1.3)]
-		var ys := [2.2, 3.3, 4.3]
-		for i in 3:
-			var cone := CylinderMesh.new()
-			cone.top_radius = 0.0
-			cone.bottom_radius = sizes[i].x
-			cone.height = sizes[i].y
-			cone.radial_segments = 8
-			st2.append_from(cone, 0, Transform3D(Basis.IDENTITY, Vector3(0, ys[i], 0)))
-	else:
-		# Broadleaf: a couple of squashed spheres.
-		for offset in [Vector3(0, 2.5, 0), Vector3(0.5, 2.1, 0.3), Vector3(-0.45, 2.2, -0.25)]:
-			var ball := SphereMesh.new()
-			ball.radius = 1.0
-			ball.height = 1.7
-			ball.radial_segments = 9
-			ball.rings = 5
-			st2.append_from(ball, 0, Transform3D(Basis.IDENTITY, offset))
-	st2.commit(mesh)
-	mesh.surface_set_material(0, bark)
-	mesh.surface_set_material(1, leaf)
-	return mesh
+func _multimesh_of(mesh: Mesh, transforms: Array[Transform3D]) -> void:
+	if transforms.is_empty():
+		return
+	var mm := MultiMesh.new()
+	mm.transform_format = MultiMesh.TRANSFORM_3D
+	mm.mesh = mesh
+	mm.instance_count = transforms.size()
+	for i in transforms.size():
+		mm.set_instance_transform(i, transforms[i])
+	var mmi := MultiMeshInstance3D.new()
+	mmi.multimesh = mm
+	add_child(mmi)
 
 func _build_trees() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1337
-	var placements: Array[Array] = [[], []]  # per kind: list of Transform3D
+	var variants: Array[ArrayMesh] = [
+		Flora.pine_mesh(11), Flora.pine_mesh(22), Flora.pine_mesh(33),
+		Flora.broadleaf_mesh(44), Flora.broadleaf_mesh(55),
+		Flora.broadleaf_mesh(66, true),  # an autumn-gold stray
+	]
+	var placements: Array = [[], [], [], [], [], []]
 	var colliders := Node3D.new()
 	add_child(colliders)
+	var total := 0
 	var attempts := 0
-	while attempts < 1600 and placements[0].size() + placements[1].size() < 240:
+	while attempts < 2200 and total < 250:
 		attempts += 1
 		var x := rng.randf_range(-ISLAND_RADIUS, ISLAND_RADIUS)
 		var z := rng.randf_range(-ISLAND_RADIUS, ISLAND_RADIUS)
@@ -263,16 +268,20 @@ func _build_trees() -> void:
 			continue
 		if _normal_at(x, z).y < 0.82:
 			continue
-		if Vector2(x, z).distance_to(TOWER_POS) < 15.0:
+		if not _clear_of_landmarks(x, z):
 			continue
-		if absf(x) < 5.0 and z > -8.0 and z < 60.0:
-			continue  # keep the path clear
-		if Vector2(x, z).distance_to(Vector2(34, 18)) < 7.0:
-			continue  # keep the stone circle clear
-		var kind := 0 if rng.randf() < 0.62 else 1
+		var v: int
+		if rng.randf() < 0.6:
+			v = rng.randi_range(0, 2)
+		elif rng.randf() < 0.12:
+			v = 5
+		else:
+			v = rng.randi_range(3, 4)
 		var s := rng.randf_range(0.8, 1.5)
-		var basis := Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(s, s * rng.randf_range(0.9, 1.25), s))
-		placements[kind].append(Transform3D(basis, Vector3(x, h - 0.15, z)))
+		var basis := Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(s, s * rng.randf_range(0.9, 1.2), s))
+		placements[v].append(Transform3D(basis, Vector3(x, h - 0.1, z)))
+		_tree_spots.append(Vector3(x, h, z))
+		total += 1
 		var body := StaticBody3D.new()
 		var cs := CollisionShape3D.new()
 		var shape := CylinderShape3D.new()
@@ -282,19 +291,115 @@ func _build_trees() -> void:
 		body.add_child(cs)
 		colliders.add_child(body)
 		body.position = Vector3(x, h + 1.0, z)
-	for kind in 2:
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_colors = true
-		mm.mesh = _tree_mesh(kind)
-		mm.instance_count = placements[kind].size()
-		for i in placements[kind].size():
-			mm.set_instance_transform(i, placements[kind][i])
-			var v := rng.randf_range(0.82, 1.1)
-			mm.set_instance_color(i, Color(v, v, v))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		add_child(mmi)
+	for v in variants.size():
+		var transforms: Array[Transform3D] = []
+		transforms.assign(placements[v])
+		_multimesh_of(variants[v], transforms)
+
+func _build_rocks() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2024
+	var variants: Array[ArrayMesh] = [
+		Flora.rock_mesh(1, 0.7), Flora.rock_mesh(2, 0.4),
+		Flora.rock_mesh(3, 0.15), Flora.rock_mesh(4, 0.55),
+	]
+	var groups: Array = [[], [], [], []]
+	var colliders := Node3D.new()
+	add_child(colliders)
+	# Large mossy boulders the player bumps into.
+	var placed := 0
+	var attempts := 0
+	while attempts < 700 and placed < 26:
+		attempts += 1
+		var x := rng.randf_range(-ISLAND_RADIUS, ISLAND_RADIUS)
+		var z := rng.randf_range(-ISLAND_RADIUS, ISLAND_RADIUS)
+		var h := height_at(x, z)
+		if h < 0.6 or h > 12.0 or not _clear_of_landmarks(x, z):
+			continue
+		var s := rng.randf_range(0.9, 2.3)
+		var basis := Basis.from_euler(Vector3(rng.randf_range(-0.15, 0.15), rng.randf() * TAU, rng.randf_range(-0.15, 0.15))).scaled(Vector3(s, s, s))
+		var pos := Vector3(x, h + s * 0.2, z)
+		groups[rng.randi_range(0, 3)].append(Transform3D(basis, pos))
+		var body := StaticBody3D.new()
+		var cs := CollisionShape3D.new()
+		var shape := SphereShape3D.new()
+		shape.radius = s * 0.72
+		cs.shape = shape
+		body.add_child(cs)
+		colliders.add_child(body)
+		body.position = pos
+		placed += 1
+	# Mid-size rocks and shoreline pebbles, visual only.
+	for spec in [[70, 0.35, 0.8, 0.8, 11.5], [170, 0.1, 0.32, 0.12, 1.5]]:
+		placed = 0
+		attempts = 0
+		while attempts < spec[0] * 4 and placed < spec[0]:
+			attempts += 1
+			var x := rng.randf_range(-ISLAND_RADIUS - 4.0, ISLAND_RADIUS + 4.0)
+			var z := rng.randf_range(-ISLAND_RADIUS - 4.0, ISLAND_RADIUS + 4.0)
+			var h := height_at(x, z)
+			if h < spec[3] or h > spec[4] or not _clear_of_landmarks(x, z):
+				continue
+			var s: float = rng.randf_range(spec[1], spec[2])
+			var basis := Basis.from_euler(Vector3(rng.randf_range(-0.2, 0.2), rng.randf() * TAU, rng.randf_range(-0.2, 0.2))).scaled(Vector3(s, s, s))
+			groups[rng.randi_range(0, 3)].append(Transform3D(basis, Vector3(x, h + s * 0.2, z)))
+			placed += 1
+	for v in variants.size():
+		var transforms: Array[Transform3D] = []
+		transforms.assign(groups[v])
+		_multimesh_of(variants[v], transforms)
+
+func _build_bushes() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6060
+	var variants: Array[ArrayMesh] = [Flora.bush_mesh(7), Flora.bush_mesh(8)]
+	var groups: Array = [[], []]
+	if _tree_spots.is_empty():
+		return
+	var placed := 0
+	var attempts := 0
+	while attempts < 320 and placed < 80:
+		attempts += 1
+		var spot := _tree_spots[rng.randi() % _tree_spots.size()]
+		var a := rng.randf() * TAU
+		var x := spot.x + cos(a) * rng.randf_range(1.6, 3.6)
+		var z := spot.z + sin(a) * rng.randf_range(1.6, 3.6)
+		var h := height_at(x, z)
+		if h < 1.4 or h > 11.5 or not _clear_of_landmarks(x, z):
+			continue
+		var s := rng.randf_range(0.8, 1.7)
+		var basis := Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(s, s * rng.randf_range(0.8, 1.1), s))
+		groups[rng.randi_range(0, 1)].append(Transform3D(basis, Vector3(x, h - 0.05, z)))
+		placed += 1
+	for v in variants.size():
+		var transforms: Array[Transform3D] = []
+		transforms.assign(groups[v])
+		_multimesh_of(variants[v], transforms)
+
+func _build_grass() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 31337
+	var variants: Array[ArrayMesh] = [
+		Flora.grass_mesh(1), Flora.grass_mesh(2),
+		Flora.grass_mesh(3, Color(0.92, 0.92, 0.96)),  # white blooms
+		Flora.grass_mesh(4, Color(0.62, 0.40, 0.85)),  # violet
+		Flora.grass_mesh(5, Color(0.95, 0.78, 0.25)),  # gold
+	]
+	var counts := [1500, 1300, 90, 90, 80]
+	for v in variants.size():
+		var transforms: Array[Transform3D] = []
+		var attempts := 0
+		while attempts < counts[v] * 3 and transforms.size() < counts[v]:
+			attempts += 1
+			var x := rng.randf_range(-ISLAND_RADIUS, ISLAND_RADIUS)
+			var z := rng.randf_range(-ISLAND_RADIUS, ISLAND_RADIUS)
+			var h := height_at(x, z)
+			if h < 1.7 or h > 10.5 or not _clear_of_landmarks(x, z):
+				continue
+			var s := rng.randf_range(0.8, 1.5)
+			var basis := Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(s, s, s))
+			transforms.append(Transform3D(basis, Vector3(x, h - 0.02, z)))
+		_multimesh_of(variants[v], transforms)
 
 func _build_path() -> void:
 	var stone := CylinderMesh.new()
