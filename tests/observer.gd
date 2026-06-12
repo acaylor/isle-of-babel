@@ -25,6 +25,19 @@ func _process(delta: float) -> void:
 				if p and p.global_position.y < -1.0:
 					_fail("player fell through the library floor")
 				if p:
+					var book := BookLore.random_book()
+					for field in ["title", "author", "chapter", "body"]:
+						if String(book[field]).is_empty():
+							_fail("random_book produced an empty %s" % field)
+					p.open_book(book)
+					if not p._reading:
+						_fail("open_book did not enter reading state")
+					p.close_book()
+					var library := get_tree().current_scene
+					if library.has_method("summon_guide_bird"):
+						library.summon_guide_bird()
+					else:
+						_fail("library has no summon_guide_bird")
 					Game.travel("res://scenes/island.tscn", "tower_top")
 		2:
 			if _time > 8.0:

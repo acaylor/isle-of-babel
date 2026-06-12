@@ -32,15 +32,18 @@ godot --path .
 | `Shift` | Run |
 | `Space` | Jump |
 | `E` | Interact (doors, portals, shelves, boat, …) |
-| `Esc` | Release the mouse (click to recapture) |
+| `F` | While reading: leaf to another page |
+| `Q` | In the library: summon a paper guide bird that leads you home |
+| `Esc` | Pause menu (Resume / Quit) — also closes an open book |
 
 ## Things to do
 
 - Follow the stone path from the dock up to the tower and press `E` at the door.
-- Browse the shelves — the library will hand you a book. It has plenty.
+- Take a book down from any shelf and actually read it — leaf further with `F`.
 - Walk in any direction inside the library. Keep walking. It does not end.
+- Wander too deep, then whistle (`Q`) and follow the paper bird home.
 - Take the portal in the entrance hall to the summit balcony and look down.
-- Find the standing stones on the east side of the island.
+- Find the standing stones on the east side of the island and touch the crystal.
 - Examine the rowboat at the dock.
 
 ## Project layout

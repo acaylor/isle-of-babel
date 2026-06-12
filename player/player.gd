@@ -25,6 +25,15 @@ var _message_label: Label
 var _message_panel: PanelContainer
 var _message_timer: Timer
 
+var _reading := false
+var _book_root: Control
+var _book_title: Label
+var _book_author: Label
+var _book_volume: Label
+var _book_chapter: Label
+var _book_body: Label
+var _book_page: Label
+
 func _ready() -> void:
 	_build_body()
 	_build_hud()
@@ -71,6 +80,15 @@ func _build_hud() -> void:
 	_prompt_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	_prompt_label.position.y -= 110
 
+	# A container band above the bottom of the screen keeps the message
+	# panel positioned and sized correctly no matter when text arrives.
+	var msg_holder := CenterContainer.new()
+	msg_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(msg_holder)
+	msg_holder.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+	msg_holder.offset_top = -360
+	msg_holder.offset_bottom = -150
+
 	_message_panel = PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.04, 0.04, 0.07, 0.78)
@@ -80,7 +98,7 @@ func _build_hud() -> void:
 	_message_panel.custom_minimum_size = Vector2(520, 0)
 	_message_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_message_panel.visible = false
-	hud.add_child(_message_panel)
+	msg_holder.add_child(_message_panel)
 
 	_message_label = Label.new()
 	_message_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -93,29 +111,173 @@ func _build_hud() -> void:
 	_message_timer.timeout.connect(func() -> void: _message_panel.visible = false)
 	add_child(_message_timer)
 
+	_build_book_ui(hud)
+
+## A full-screen open book: leather cover, two parchment pages, generated
+## text. Shown by open_book(), dismissed with E/Esc, re-rolled with F.
+func _build_book_ui(hud: CanvasLayer) -> void:
+	_book_root = Control.new()
+	_book_root.visible = false
+	_book_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(_book_root)
+	_book_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.5)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_book_root.add_child(dim)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var center := CenterContainer.new()
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_book_root.add_child(center)
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var cover := PanelContainer.new()
+	var cover_style := StyleBoxFlat.new()
+	cover_style.bg_color = Color(0.20, 0.11, 0.08)
+	cover_style.set_corner_radius_all(10)
+	cover_style.set_content_margin_all(16)
+	cover_style.border_color = Color(0.55, 0.42, 0.18)
+	cover_style.set_border_width_all(2)
+	cover.add_theme_stylebox_override("panel", cover_style)
+	center.add_child(cover)
+
+	var pages := HBoxContainer.new()
+	pages.add_theme_constant_override("separation", 0)
+	cover.add_child(pages)
+
+	var ink := Color(0.26, 0.19, 0.12)
+	var faded := Color(0.42, 0.33, 0.24)
+
+	var left := _make_page(Color(0.90, 0.85, 0.72))
+	pages.add_child(left)
+	var left_box := VBoxContainer.new()
+	left_box.custom_minimum_size = Vector2(360, 470)
+	left_box.add_theme_constant_override("separation", 12)
+	left.add_child(left_box)
+	left_box.add_child(_page_spacer())
+	_book_title = _page_label(28, ink, HORIZONTAL_ALIGNMENT_CENTER)
+	left_box.add_child(_book_title)
+	_book_author = _page_label(15, faded, HORIZONTAL_ALIGNMENT_CENTER)
+	left_box.add_child(_book_author)
+	_book_volume = _page_label(13, faded, HORIZONTAL_ALIGNMENT_CENTER)
+	left_box.add_child(_book_volume)
+	left_box.add_child(_page_spacer())
+	var ornament := _page_label(20, faded, HORIZONTAL_ALIGNMENT_CENTER)
+	ornament.text = "—  ❦  —"
+	left_box.add_child(ornament)
+	left_box.add_child(_page_spacer())
+
+	var spine := ColorRect.new()
+	spine.color = Color(0.13, 0.07, 0.05)
+	spine.custom_minimum_size = Vector2(8, 0)
+	pages.add_child(spine)
+
+	var right := _make_page(Color(0.93, 0.88, 0.76))
+	pages.add_child(right)
+	var right_box := VBoxContainer.new()
+	right_box.custom_minimum_size = Vector2(430, 470)
+	right_box.add_theme_constant_override("separation", 12)
+	right.add_child(right_box)
+	_book_chapter = _page_label(15, ink, HORIZONTAL_ALIGNMENT_CENTER)
+	right_box.add_child(_book_chapter)
+	var rule := ColorRect.new()
+	rule.color = Color(0.62, 0.52, 0.38)
+	rule.custom_minimum_size = Vector2(0, 1)
+	right_box.add_child(rule)
+	_book_body = _page_label(14, ink, HORIZONTAL_ALIGNMENT_LEFT)
+	_book_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_box.add_child(_book_body)
+	_book_page = _page_label(12, faded, HORIZONTAL_ALIGNMENT_CENTER)
+	right_box.add_child(_book_page)
+
+	var hint := Label.new()
+	hint.text = "F — leaf further    ·    E — close the book"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint.add_theme_font_size_override("font_size", 15)
+	hint.add_theme_color_override("font_color", Color(0.85, 0.82, 0.72))
+	hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.8))
+	hint.add_theme_constant_override("outline_size", 6)
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_book_root.add_child(hint)
+	hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	hint.position.y -= 28
+
+func _make_page(tone: Color) -> PanelContainer:
+	var page := PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = tone
+	style.set_corner_radius_all(3)
+	style.set_content_margin_all(26)
+	page.add_theme_stylebox_override("panel", style)
+	return page
+
+func _page_label(size: int, color: Color, halign: HorizontalAlignment) -> Label:
+	var l := Label.new()
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.horizontal_alignment = halign
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	return l
+
+func _page_spacer() -> Control:
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	return spacer
+
+func open_book(book: Dictionary) -> void:
+	_fill_book(book)
+	_book_root.visible = true
+	_reading = true
+	_prompt_label.text = ""
+	_message_panel.visible = false
+
+func close_book() -> void:
+	_reading = false
+	_book_root.visible = false
+
+func _fill_book(book: Dictionary) -> void:
+	_book_title.text = book.title
+	_book_author.text = "by %s" % book.author
+	_book_volume.text = "Volume %d" % book.volume
+	_book_chapter.text = book.chapter
+	_book_body.text = book.body
+	_book_page.text = "— %d —" % book.page
+
 func show_message(text: String, duration := 8.0) -> void:
 	_message_label.text = text
 	_message_panel.visible = true
-	_message_panel.reset_size()
-	_message_panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	_message_panel.position += Vector2(0, -170 - _message_panel.size.y)
 	_message_timer.start(duration)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _reading:
+		if event.is_action_pressed("interact") or event.is_action_pressed("ui_cancel"):
+			close_book()
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed("flip"):
+			_fill_book(BookLore.random_book())
+			get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * MOUSE_SENSITIVITY)
 		_pitch = clampf(_pitch - event.relative.y * MOUSE_SENSITIVITY, -1.45, 1.45)
 		camera.rotation.x = _pitch
-	elif event.is_action_pressed("ui_cancel"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	elif event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	elif event is InputEventMouseButton and event.pressed \
+			and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED and not get_tree().paused:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
-	elif Input.is_action_just_pressed("jump"):
+	elif Input.is_action_just_pressed("jump") and not _reading:
 		velocity.y = JUMP_VELOCITY
+
+	if _reading:
+		velocity.x = move_toward(velocity.x, 0.0, WALK_SPEED * delta * 10.0)
+		velocity.z = move_toward(velocity.z, 0.0, WALK_SPEED * delta * 10.0)
+		move_and_slide()
+		return
 
 	var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()

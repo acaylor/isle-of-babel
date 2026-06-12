@@ -23,6 +23,7 @@ var _boat: Node3D
 var _boat_base_y := 0.6
 var _crystal: MeshInstance3D
 var _crystal_base_y := 0.0
+var _spawns := {}
 
 func _ready() -> void:
 	_noise.seed = 7041
@@ -552,23 +553,27 @@ func _build_stone_circle() -> void:
 	shape.radius = 1.2
 	shape.height = 3.0
 	root.add_child(Interactable.make(shape, "Touch the crystal", func(p: Node) -> void:
-		p.show_message("The crystal thrums with a voice that is not quite a voice:\n\n“The shelves remember every word ever written. The lake remembers everything else.”"),
+		var pl := p as Player
+		Game.blink(func() -> void:
+			pl.global_transform = _spawns["tower_top"]
+			pl.velocity = Vector3.ZERO
+			pl.show_message("The crystal hums — the world folds, and the summit unfolds beneath your feet.", 7.0)),
 		Transform3D(Basis.IDENTITY, Vector3(center.x, ch + 1.7, center.y))))
 
 # -- player ----------------------------------------------------------------
 
 func _spawn_player() -> void:
 	var deck_y := PLATEAU_HEIGHT + TOWER_HEIGHT + 0.6
-	var spawns := {
+	_spawns = {
 		"dock": Transform3D(Basis.IDENTITY, Vector3(0, 1.4, 63.0)),
 		"tower_door": Transform3D(Basis.from_euler(Vector3(0, PI, 0)), Vector3(0, PLATEAU_HEIGHT + 0.3, -4.2)),
 		"tower_top": Transform3D(Basis.from_euler(Vector3(0, PI, 0)), Vector3(-3.3, deck_y, -12.0)),
 	}
 	var player := PlayerScript.new()
 	add_child(player)
-	var t: Transform3D = spawns.get(Game.spawn_point, spawns["dock"])
+	var t: Transform3D = _spawns.get(Game.spawn_point, _spawns["dock"])
 	player.global_transform = t
-	player.home_transform = spawns["dock"]
+	player.home_transform = _spawns["dock"]
 	player.fall_reset_y = -2.2
 	player.fall_message = "The lake returns you, politely, to the dock."
 	if Game.spawn_point == "dock":
