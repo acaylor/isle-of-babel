@@ -1,0 +1,26 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+
+config_version=5
+
+[application]
+
+config/name="Isle of Babel"
+config/description="A Myst-like exploration of a wizard's pocket-dimension island."
+run/main_scene="res://scenes/island.tscn"
+config/features=PackedStringArray("4.6")
+config/icon="res://icon.svg"
+
+[autoload]
+
+Game="*res://autoload/game.gd"
+
+[display]
+
+window/size/viewport_width=1440
+window/size/viewport_height=810
+
+[rendering]
+
+anti_aliasing/quality/msaa_3d=2
