@@ -1,0 +1,10 @@
+# Godot
+.godot/
+*.translation
+
+# macOS
+.DS_Store
+
+# Exports (may contain signing credentials)
+export_presets.cfg
+build/
