@@ -3,10 +3,13 @@ extends Node
 ## the spawn point the next scene should place the player at, and the
 ## pause menu.
 
+const VERSION := "0.2.0-alpha"
 const FADE_OUT := 0.45
 const FADE_IN := 0.7
 
-var spawn_point := "dock"
+## "menu" is a sentinel: the island scene builds the title screen with a
+## cinematic camera instead of spawning the player.
+var spawn_point := "menu"
 
 var _fade: ColorRect
 var _busy := false
@@ -63,6 +66,9 @@ func blink(action: Callable) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
+		var cs := get_tree().current_scene
+		if cs and cs.has_meta("main_menu"):
+			return  # nothing to pause on the title screen
 		toggle_pause()
 		get_viewport().set_input_as_handled()
 
@@ -121,15 +127,22 @@ func _build_pause_menu() -> void:
 
 	box.add_child(HSeparator.new())
 
-	_resume_button = _menu_button("Resume")
+	_resume_button = menu_button("Resume")
 	_resume_button.pressed.connect(toggle_pause)
 	box.add_child(_resume_button)
 
-	var quit := _menu_button("Quit")
+	var to_menu := menu_button("Main Menu")
+	to_menu.pressed.connect(func() -> void:
+		toggle_pause()
+		travel("res://scenes/island.tscn", "menu"))
+	box.add_child(to_menu)
+
+	var quit := menu_button("Quit")
 	quit.pressed.connect(func() -> void: get_tree().quit())
 	box.add_child(quit)
 
-func _menu_button(text: String) -> Button:
+## Shared button styling for the pause menu and the title screen.
+func menu_button(text: String) -> Button:
 	var b := Button.new()
 	b.text = text
 	b.custom_minimum_size = Vector2(240, 46)

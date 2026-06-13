@@ -79,6 +79,8 @@ func _build_hud() -> void:
 	hud.add_child(_prompt_label)
 	_prompt_label.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
 	_prompt_label.position.y -= 110
+	# Text arrives after anchoring; grow from the center so it stays centered.
+	_prompt_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 
 	# A container band above the bottom of the screen keeps the message
 	# panel positioned and sized correctly no matter when text arrives.

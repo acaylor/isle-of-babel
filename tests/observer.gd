@@ -8,7 +8,7 @@ var _stage := 0
 
 func _process(delta: float) -> void:
 	_time += delta
-	if _time > 14.0:
+	if _time > 17.0:
 		_fail("timed out in stage %d" % _stage)
 	match _stage:
 		0:
@@ -47,6 +47,17 @@ func _process(delta: float) -> void:
 				if p and p.global_position.y < 30.0:
 					_fail("expected player on the summit balcony, got y=%.1f" % p.global_position.y)
 				elif p:
+					Game.travel("res://scenes/island.tscn", "menu")
+		3:
+			if _time > 11.5:
+				_stage = 4
+				_expect_scene("Island")
+				var cs := get_tree().current_scene
+				if not cs.has_meta("main_menu"):
+					_fail("menu spawn did not build the title screen")
+				elif not cs.find_children("", "CharacterBody3D", true, false).is_empty():
+					_fail("title screen should not spawn a player")
+				else:
 					print("SMOKE OK")
 					get_tree().quit(0)
 

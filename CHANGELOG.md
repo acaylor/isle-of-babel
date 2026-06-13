@@ -9,6 +9,9 @@ releases are tagged on the `main` branch.
 The interactivity update.
 
 ### Added
+- Main menu: the game now opens on a title screen floating over the live
+  island, the camera slowly orbiting the tower. Begin starts at the dock;
+  a version label sits in the corner.
 - Open-book reading interface: taking a book down from a shelf now opens it
   across the screen — leather cover, two parchment pages, generated title,
   author, chapter heading, and page text that stays on the book's subject.
@@ -17,7 +20,7 @@ The interactivity update.
   itself into a glowing bird that flies above the shelves toward the
   entrance portal, waiting when the reader falls behind and dissolving over
   the dais.
-- Pause menu on `Esc` with Resume and Quit.
+- Pause menu on `Esc` with Resume, Main Menu, and Quit.
 - The standing-stone crystal now folds the world: touching it teleports you
   to the summit balcony.
 
