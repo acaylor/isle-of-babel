@@ -23,6 +23,8 @@ var _boat: Node3D
 var _boat_base_y := 0.6
 var _crystal: MeshInstance3D
 var _crystal_base_y := 0.0
+var _spawns := {}
+var _menu_pivot: Node3D
 
 func _ready() -> void:
 	_noise.seed = 7041
@@ -55,6 +57,8 @@ func _process(delta: float) -> void:
 	if _crystal:
 		_crystal.rotation.y += delta * 0.6
 		_crystal.position.y = _crystal_base_y + sin(_t * 1.4) * 0.12
+	if _menu_pivot:
+		_menu_pivot.rotation.y += delta * 0.035
 
 # -- terrain ---------------------------------------------------------------
 
@@ -552,24 +556,96 @@ func _build_stone_circle() -> void:
 	shape.radius = 1.2
 	shape.height = 3.0
 	root.add_child(Interactable.make(shape, "Touch the crystal", func(p: Node) -> void:
-		p.show_message("The crystal thrums with a voice that is not quite a voice:\n\n“The shelves remember every word ever written. The lake remembers everything else.”"),
+		var pl := p as Player
+		Game.blink(func() -> void:
+			pl.global_transform = _spawns["tower_top"]
+			pl.velocity = Vector3.ZERO
+			pl.show_message("The crystal hums — the world folds, and the summit unfolds beneath your feet.", 7.0)),
 		Transform3D(Basis.IDENTITY, Vector3(center.x, ch + 1.7, center.y))))
 
 # -- player ----------------------------------------------------------------
 
 func _spawn_player() -> void:
 	var deck_y := PLATEAU_HEIGHT + TOWER_HEIGHT + 0.6
-	var spawns := {
+	_spawns = {
 		"dock": Transform3D(Basis.IDENTITY, Vector3(0, 1.4, 63.0)),
 		"tower_door": Transform3D(Basis.from_euler(Vector3(0, PI, 0)), Vector3(0, PLATEAU_HEIGHT + 0.3, -4.2)),
 		"tower_top": Transform3D(Basis.from_euler(Vector3(0, PI, 0)), Vector3(-3.3, deck_y, -12.0)),
 	}
+	if Game.spawn_point == "menu":
+		_build_main_menu()
+		return
 	var player := PlayerScript.new()
 	add_child(player)
-	var t: Transform3D = spawns.get(Game.spawn_point, spawns["dock"])
+	var t: Transform3D = _spawns.get(Game.spawn_point, _spawns["dock"])
 	player.global_transform = t
-	player.home_transform = spawns["dock"]
+	player.home_transform = _spawns["dock"]
 	player.fall_reset_y = -2.2
 	player.fall_message = "The lake returns you, politely, to the dock."
 	if Game.spawn_point == "dock":
-		player.show_message("You arrive in the wizard's pocket dimension.\n\nWASD — walk · Mouse — look · Shift — run\nSpace — jump · E — interact · Esc — release mouse", 12.0)
+		player.show_message("You arrive in the wizard's pocket dimension.\n\nWASD — walk · Mouse — look · Shift — run\nSpace — jump · E — interact · Esc — pause", 12.0)
+
+## The title screen: the live island under a slowly orbiting camera, with
+## the menu floating over it.
+func _build_main_menu() -> void:
+	set_meta("main_menu", true)
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+	_menu_pivot = Node3D.new()
+	add_child(_menu_pivot)
+	_menu_pivot.position = Vector3(TOWER_POS.x, 0, TOWER_POS.y)
+	var cam := Camera3D.new()
+	cam.far = 1600.0
+	_menu_pivot.add_child(cam)
+	cam.position = Vector3(48, 34, 78)
+	cam.look_at(Vector3(TOWER_POS.x, 24.0, TOWER_POS.y))
+	cam.current = true
+
+	var layer := CanvasLayer.new()
+	add_child(layer)
+
+	var title := Label.new()
+	title.text = "ISLE  OF  BABEL"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 68)
+	title.add_theme_color_override("font_color", Color(0.93, 0.87, 0.68))
+	title.add_theme_color_override("font_outline_color", Color(0.08, 0.06, 0.03, 0.9))
+	title.add_theme_constant_override("outline_size", 10)
+	layer.add_child(title)
+	title.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	title.position.y += 90
+
+	var subtitle := Label.new()
+	subtitle.text = "a pocket dimension"
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_font_size_override("font_size", 19)
+	subtitle.add_theme_color_override("font_color", Color(0.92, 0.92, 0.95, 0.85))
+	subtitle.add_theme_color_override("font_outline_color", Color(0.08, 0.06, 0.03, 0.8))
+	subtitle.add_theme_constant_override("outline_size", 6)
+	layer.add_child(subtitle)
+	subtitle.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	subtitle.position.y += 178
+
+	var buttons := VBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 14)
+	layer.add_child(buttons)
+	var begin := Game.menu_button("Begin")
+	begin.pressed.connect(func() -> void:
+		Game.travel("res://scenes/island.tscn", "dock"))
+	buttons.add_child(begin)
+	var quit := Game.menu_button("Quit")
+	quit.pressed.connect(func() -> void: get_tree().quit())
+	buttons.add_child(quit)
+	buttons.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	buttons.position.y -= 220
+	begin.grab_focus()
+
+	var version := Label.new()
+	version.text = "v%s" % Game.VERSION
+	version.add_theme_font_size_override("font_size", 13)
+	version.add_theme_color_override("font_color", Color(1, 1, 1, 0.55))
+	version.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+	version.add_theme_constant_override("outline_size", 4)
+	layer.add_child(version)
+	version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	version.position += Vector2(-14, -10)

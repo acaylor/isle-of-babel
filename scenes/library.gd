@@ -45,8 +45,9 @@ func _ready() -> void:
 	_spawn_player()
 	_stream_cells(true)
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_stream_cells(false)
+	_bird_process(delta)
 
 # -- shared geometry -------------------------------------------------------
 
@@ -174,8 +175,8 @@ func _build_edge(root: Node3D, rng: RandomNumberGenerator, west: bool) -> void:
 		_fill_books(shelf, rng)
 		var shape := BoxShape3D.new()
 		shape.size = Vector3(SHELF_LEN, SHELF_H, SHELF_D)
-		shelf.add_child(Interactable.make(shape, "Browse the shelves", func(p: Node) -> void:
-			p.show_message(BookLore.random_passage()),
+		shelf.add_child(Interactable.make(shape, "Take down a book", func(p: Node) -> void:
+			(p as Player).open_book(BookLore.random_book()),
 			Transform3D(Basis.IDENTITY, Vector3(0, SHELF_H / 2.0, 0))))
 
 func _fill_books(shelf: Node3D, rng: RandomNumberGenerator) -> void:
@@ -299,4 +300,82 @@ func _spawn_player() -> void:
 	# A warm lantern that travels with the reader.
 	Forge.omni(_player.camera, Color(1.0, 0.82, 0.55), 1.3, 16.0, Vector3(0.3, -0.2, 0.3))
 	if Game.spawn_point == "entrance":
-		_player.show_message("The tower is larger inside than out.\nThe shelves hold every book ever written, and they do not end.", 9.0)
+		_player.show_message("The tower is larger inside than out.\nThe shelves hold every book ever written, and they do not end.\n\nShould you wander too deep, whistle (Q) — the library will lend you a page.", 11.0)
+
+# -- the guide bird ----------------------------------------------------------
+# The creative way home: a loose page folds itself into a paper bird that
+# flies above the shelves toward the entrance, waiting if the reader falls
+# behind, and dissolving over the portal dais.
+
+const BIRD_ALTITUDE := 6.2
+const BIRD_SPEED := 6.5
+const BIRD_LEASH := 16.0
+
+var _bird: Node3D
+var _bird_wing_l: Node3D
+var _bird_wing_r: Node3D
+var _bird_phase := 0.0
+var _bird_state := ""  # rise / fly / land
+
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("summon"):
+		summon_guide_bird()
+		get_viewport().set_input_as_handled()
+
+func summon_guide_bird() -> void:
+	if _bird:
+		return
+	_bird = Node3D.new()
+	add_child(_bird)
+	_bird.global_position = _player.global_position + Vector3(0, 1.6, 0)
+	var paper := Forge.mat(Color(0.96, 0.94, 0.86), 0.6, Color(1.0, 0.95, 0.75), 0.9)
+	Forge.box(_bird, Vector3(0.10, 0.07, 0.42), paper, Vector3.ZERO)
+	Forge.box(_bird, Vector3(0.05, 0.05, 0.16), paper, Vector3(0, 0.06, -0.26), Vector3(0.5, 0, 0))
+	Forge.box(_bird, Vector3(0.04, 0.10, 0.12), paper, Vector3(0, 0.05, 0.24), Vector3(-0.6, 0, 0))
+	_bird_wing_l = Node3D.new()
+	_bird.add_child(_bird_wing_l)
+	Forge.box(_bird_wing_l, Vector3(0.5, 0.015, 0.24), paper, Vector3(-0.27, 0, 0))
+	_bird_wing_r = Node3D.new()
+	_bird.add_child(_bird_wing_r)
+	Forge.box(_bird_wing_r, Vector3(0.5, 0.015, 0.24), paper, Vector3(0.27, 0, 0))
+	Forge.omni(_bird, Color(1.0, 0.9, 0.6), 0.8, 6.0, Vector3.ZERO)
+	_bird_state = "rise"
+	_player.show_message("A loose page folds itself into wings. Follow.", 5.0)
+
+func _bird_process(delta: float) -> void:
+	if not _bird:
+		return
+	_bird_phase += delta
+	var flap := sin(_bird_phase * 13.0) * 0.55
+	_bird_wing_l.rotation.z = -flap
+	_bird_wing_r.rotation.z = flap
+	var pos := _bird.global_position
+	match _bird_state:
+		"rise":
+			pos.y += delta * 3.0
+			if pos.y >= BIRD_ALTITUDE:
+				pos.y = BIRD_ALTITUDE
+				_bird_state = "fly"
+		"fly":
+			var home := Vector3(0, BIRD_ALTITUDE, -3.8)
+			var to_home := home - pos
+			to_home.y = 0
+			# Wait for the reader rather than abandoning them in the stacks.
+			var player_gap := Vector2(pos.x - _player.global_position.x, pos.z - _player.global_position.z).length()
+			if player_gap < BIRD_LEASH and to_home.length() > 1.0:
+				pos += to_home.normalized() * BIRD_SPEED * delta
+			pos.y = BIRD_ALTITUDE + sin(_bird_phase * 2.2) * 0.15
+			if to_home.length() <= 1.0:
+				_bird_state = "land"
+			if to_home.length() > 0.5:
+				var target := pos + to_home.normalized()
+				_bird.look_at(Vector3(target.x, pos.y, target.z), Vector3.UP)
+		"land":
+			var dais := Vector3(0, 1.6, -3.8)
+			pos = pos.move_toward(dais, delta * 2.5)
+			_bird.scale = _bird.scale.move_toward(Vector3(0.05, 0.05, 0.05), delta * 0.45)
+			if pos.distance_to(dais) < 0.2 or _bird.scale.x <= 0.07:
+				_bird.queue_free()
+				_bird = null
+				return
+	_bird.global_position = pos

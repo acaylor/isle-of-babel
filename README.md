@@ -32,15 +32,18 @@ godot --path .
 | `Shift` | Run |
 | `Space` | Jump |
 | `E` | Interact (doors, portals, shelves, boat, …) |
-| `Esc` | Release the mouse (click to recapture) |
+| `F` | While reading: leaf to another page |
+| `Q` | In the library: summon a paper guide bird that leads you home |
+| `Esc` | Pause menu (Resume / Quit) — also closes an open book |
 
 ## Things to do
 
 - Follow the stone path from the dock up to the tower and press `E` at the door.
-- Browse the shelves — the library will hand you a book. It has plenty.
+- Take a book down from any shelf and actually read it — leaf further with `F`.
 - Walk in any direction inside the library. Keep walking. It does not end.
+- Wander too deep, then whistle (`Q`) and follow the paper bird home.
 - Take the portal in the entrance hall to the summit balcony and look down.
-- Find the standing stones on the east side of the island.
+- Find the standing stones on the east side of the island and touch the crystal.
 - Examine the rowboat at the dock.
 
 ## Project layout
@@ -59,6 +62,37 @@ scripts/interactable.gd  Raycast-targetable object with prompt + action
 scripts/book_lore.gd Generated titles/authors/excerpts for the shelves
 shaders/water.gdshader   The lake
 ```
+
+## Testing
+
+The repo ships a headless smoke test that plays through the whole loop —
+island, into the library (opens a generated book, summons the guide bird),
+through the portal to the summit, then back out to the title screen —
+asserting at each step. Run it from the repo root:
+
+```sh
+godot --headless --path . res://tests/smoke.tscn
+```
+
+It prints `SMOKE OK` and exits `0` on success, or `SMOKE FAIL: <reason>`
+and exits `1`. The stages live in `tests/observer.gd` (time-based, because
+the scene transitions fade in real time).
+
+For visual checks without playing, Godot's movie-maker mode renders real
+frames to disk:
+
+```sh
+# 25 frames of the title screen / island at 10 simulated fps
+godot --path . --write-movie /tmp/shots/f.png --fixed-fps 10 --quit-after 25
+
+# same, but for a specific scene
+godot --path . res://scenes/library.tscn --write-movie /tmp/shots/f.png --fixed-fps 10 --quit-after 25
+```
+
+(macOS note: the Homebrew cask — `brew install --cask godot` — doesn't put
+`godot` on PATH; either symlink it,
+`ln -s /Applications/Godot.app/Contents/MacOS/Godot /opt/homebrew/bin/godot`,
+or use the full path.)
 
 ## Asset policy
 
