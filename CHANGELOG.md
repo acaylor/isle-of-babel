@@ -4,6 +4,15 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
+## [Unreleased]
+
+### Fixed
+- Pressing `E` while reading closed the book but the same key press
+  immediately took another book down from the shelf under the crosshair,
+  so `E` appeared to flip pages just like `F`. The press that closes a
+  book is now consumed. The smoke test opens and closes a book through
+  real simulated key presses to keep this from regressing.
+
 ## [0.2.0-alpha] — 2026-06-12
 
 The interactivity update.

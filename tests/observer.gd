@@ -5,10 +5,11 @@ extends Node
 
 var _time := 0.0
 var _stage := 0
+var _test_shelf: Interactable
 
 func _process(delta: float) -> void:
 	_time += delta
-	if _time > 17.0:
+	if _time > 19.0:
 		_fail("timed out in stage %d" % _stage)
 	match _stage:
 		0:
@@ -38,19 +39,51 @@ func _process(delta: float) -> void:
 						library.summon_guide_bird()
 					else:
 						_fail("library has no summon_guide_bird")
-					Game.travel("res://scenes/island.tscn", "tower_top")
+					# Park a book-shelf interactable right under the crosshair
+					# so the next stages can exercise the E key end to end.
+					var shape := BoxShape3D.new()
+					_test_shelf = Interactable.make(shape, "Take down a book",
+						func(pl: Node) -> void: (pl as Player).open_book(BookLore.random_book()),
+						Transform3D(Basis.IDENTITY, p.global_position + Vector3(0, 1.62, -2.0)))
+					library.add_child(_test_shelf)
 		2:
-			if _time > 8.0:
+			if _time > 5.4:
 				_stage = 3
+				_press_interact(true)
+		3:
+			if _time > 6.0:
+				_stage = 4
+				_press_interact(false)
+				var p := _expect_player()
+				if p and not p._reading:
+					_fail("pressing E at a shelf did not open a book")
+		4:
+			if _time > 6.5:
+				_stage = 5
+				_press_interact(true)
+		5:
+			if _time > 7.1:
+				_stage = 6
+				_press_interact(false)
+				var p := _expect_player()
+				if p and p._reading:
+					_fail("E closed the book but immediately took down another (E acted like F)")
+				if _test_shelf:
+					_test_shelf.queue_free()
+					_test_shelf = null
+				Game.travel("res://scenes/island.tscn", "tower_top")
+		6:
+			if _time > 10.5:
+				_stage = 7
 				_expect_scene("Island")
 				var p := _expect_player()
 				if p and p.global_position.y < 30.0:
 					_fail("expected player on the summit balcony, got y=%.1f" % p.global_position.y)
 				elif p:
 					Game.travel("res://scenes/island.tscn", "menu")
-		3:
-			if _time > 11.5:
-				_stage = 4
+		7:
+			if _time > 14.0:
+				_stage = 8
 				_expect_scene("Island")
 				var cs := get_tree().current_scene
 				if not cs.has_meta("main_menu"):
@@ -60,6 +93,15 @@ func _process(delta: float) -> void:
 				else:
 					print("SMOKE OK")
 					get_tree().quit(0)
+
+## Feed a real E press/release through the input pipeline, so both the
+## event path (_unhandled_input) and the polled path (is_action_just_pressed
+## in _physics_process) see it — exactly like a player at the keyboard.
+func _press_interact(pressed: bool) -> void:
+	var ev := InputEventAction.new()
+	ev.action = "interact"
+	ev.pressed = pressed
+	Input.parse_input_event(ev)
 
 func _expect_scene(expected: String) -> void:
 	var cs := get_tree().current_scene

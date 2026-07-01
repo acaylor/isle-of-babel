@@ -26,6 +26,7 @@ var _message_panel: PanelContainer
 var _message_timer: Timer
 
 var _reading := false
+var _consume_interact := false
 var _book_root: Control
 var _book_title: Label
 var _book_author: Label
@@ -256,6 +257,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _reading:
 		if event.is_action_pressed("interact") or event.is_action_pressed("ui_cancel"):
 			close_book()
+			# The E press that closed the book is still just_pressed when
+			# _update_interact() runs, with the ray still on the shelf —
+			# eat it so it can't immediately take down another book.
+			if event.is_action_pressed("interact"):
+				_consume_interact = true
 			get_viewport().set_input_as_handled()
 		elif event.is_action_pressed("flip"):
 			_fill_book(BookLore.random_book())
@@ -309,5 +315,9 @@ func _update_interact() -> void:
 		if hit is Interactable:
 			target = hit
 	_prompt_label.text = "[E]  %s" % target.prompt if target else ""
-	if target and Input.is_action_just_pressed("interact"):
+	var pressed := Input.is_action_just_pressed("interact")
+	if pressed and _consume_interact:
+		_consume_interact = false
+		pressed = false
+	if target and pressed:
 		target.interact(self)
