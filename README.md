@@ -22,9 +22,15 @@ dependencies and no assets to download — every mesh, material and book in
 the game is generated procedurally at runtime.
 
 ```sh
-# from the repo root
+# from the repo root — first run only: build Godot's import cache
+# (running the game directly on a fresh checkout fails with a wall of
+#  "Identifier not declared" / "Could not find type" parse errors,
+#  because the global script-class cache in .godot/ doesn't exist yet)
+godot --headless --path . --import
+
 godot --path .
 # or open the project in the Godot editor and press Play
+# (opening the editor once also builds the cache)
 ```
 
 ## Controls
