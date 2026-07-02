@@ -29,6 +29,19 @@ The secrets update.
   world ends in stone and water.
 
 ### Changed
+- Everything you can touch in the forest got a visual pass: the kept
+  books breathe light through lips of bark, trailing tendrils, moss, and
+  slow-orbiting loose pages; the boundary stone carries rows of worn
+  carving, a chipped crown, and creeping moss; the wizard's journal lies
+  open mid-entry on its lectern, ink lines and ribbon marker and all;
+  the cold ring has shed shards beside a cracked dais circled with worn
+  sigils, and wakes with breathing light and circling sparks; the
+  hermit's camp gained a dead lantern, wax runs, spare books, and a
+  washing line with one forgotten shirt; the rowboat carries a lit,
+  gently pulsing bow lantern and moors to a proper post with a charmed
+  knot. The spring's waterfall pours as a full column with white threads
+  and mist, and every mote in the forest now drifts instead of hanging
+  still.
 - The stream now begins at the spring instead of running off the edge of
   the map.
 - The smoke test collects all five kept books (asserting the ring wakes),

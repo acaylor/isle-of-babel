@@ -50,6 +50,14 @@ var _abutment_a := Vector2.ZERO
 var _abutment_b := Vector2.ZERO
 var _abutment_h := -1e9  # sentinel: abutments off until computed
 
+## Living-scene effects, all cheap: emissive materials that breathe,
+## lights that breathe with them, pivots that turn, and motes that drift.
+var _pulse_mats: Array[StandardMaterial3D] = []
+var _pulse_lights: Array[OmniLight3D] = []
+var _pulse_base: Array[float] = []
+var _orbit_pivots: Array[Node3D] = []
+var _drift_motes: Array = []  # [Node3D, base_y, phase]
+
 func _ready() -> void:
 	_noise.seed = 8083
 	_noise.noise_type = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
@@ -88,6 +96,25 @@ func _process(delta: float) -> void:
 		_boat.rotation.z = sin(_t * 0.9) * 0.03
 		_boat.rotation.x = sin(_t * 0.7) * 0.02
 		_voyage_step(delta)
+	for i in _pulse_mats.size():
+		var e := _pulse_base[i] * (1.0 + 0.35 * sin(_t * 1.6 + i * 1.7))
+		_pulse_mats[i].emission_energy_multiplier = e
+	for i in _pulse_lights.size():
+		_pulse_lights[i].light_energy = 0.55 * (1.0 + 0.4 * sin(_t * 1.6 + i * 1.7))
+	for piv in _orbit_pivots:
+		piv.rotation.y += delta * 0.45
+	for m: Array in _drift_motes:
+		var node: Node3D = m[0]
+		node.position.y = m[1] + sin(_t * 0.8 + m[2]) * 0.3
+
+func _register_pulse(mat: StandardMaterial3D, light: OmniLight3D) -> void:
+	_pulse_mats.append(mat)
+	_pulse_base.append(mat.emission_energy_multiplier)
+	if light:
+		_pulse_lights.append(light)
+
+func _register_mote(node: Node3D, phase: float) -> void:
+	_drift_motes.append([node, node.position.y, phase])
 
 # -- terrain -----------------------------------------------------------------
 
@@ -393,7 +420,9 @@ func _build_glade() -> void:
 	var first := true
 	var wz := POOL_Z - 12.0
 	while wz < POOL_Z - 1.0:
-		var y := height_at(wf_x, wz) + 0.14
+		# Ride well proud of the rock: the terrain mesh is coarser than
+		# these samples and would otherwise poke through mid-fall.
+		var y := height_at(wf_x, wz) + 0.45
 		y = maxf(y, water_y)
 		var l := Vector3(wf_x - 1.1, y, wz)
 		var r := Vector3(wf_x + 1.1, y, wz)
@@ -407,7 +436,7 @@ func _build_glade() -> void:
 		prev_l = l
 		prev_r = r
 		first = false
-		wz += 1.2
+		wz += 0.7
 	var wf_mesh := st.commit()
 	var wf_mat := Forge.mat(Color(0.72, 0.85, 0.88, 0.55), 0.05, Color(0.5, 0.65, 0.7), 0.25)
 	wf_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -416,6 +445,24 @@ func _build_glade() -> void:
 	var wf := MeshInstance3D.new()
 	wf.mesh = wf_mesh
 	glade.add_child(wf)
+	# White threads inside the fall, and mist where it lands.
+	var thread := Forge.mat(Color(0.94, 0.97, 0.97, 0.7), 0.15, Color(0.8, 0.9, 0.9), 0.5)
+	thread.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var t_rng := RandomNumberGenerator.new()
+	t_rng.seed = 55
+	for i in 4:
+		var tx := wf_x + t_rng.randf_range(-0.8, 0.8)
+		var tz := POOL_Z - 9.0 + t_rng.randf_range(-1.0, 1.0)
+		var top := Vector3(tx, height_at(tx, tz) + 0.2, tz)
+		var bot := Vector3(tx + t_rng.randf_range(-0.2, 0.2), water_y + 0.05, POOL_Z - 3.4)
+		Forge.cyl(glade, 0.03, 0.05, top.distance_to(bot), thread,
+			(top + bot) / 2.0, Vector3(atan2(bot.z - top.z, top.y - bot.y), 0, 0), 5)
+	var mist := Forge.mat(Color(0.85, 0.92, 0.92, 0.18), 0.6)
+	mist.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	for i in 3:
+		Forge.sphere(glade, t_rng.randf_range(0.9, 1.5), mist,
+			Vector3(wf_x + t_rng.randf_range(-1.6, 1.6), water_y + 0.5, POOL_Z - 3.0 + t_rng.randf_range(-0.8, 0.8)),
+			Vector3(1.4, 0.6, 1.0))
 
 	# Foam where the falls meet the pool.
 	var rng := RandomNumberGenerator.new()
@@ -439,13 +486,14 @@ func _build_glade() -> void:
 			Vector3(sx, height_at(sx, sz) + s * 0.25, sz),
 			Vector3(0, rng.randf() * TAU, 0), Vector3(s, s, s))
 
-	# Motes over the water, and the light they make.
+	# Motes over the water — drifting, not pinned — and the light they make.
 	var mote := Forge.mat(Color(0.85, 0.95, 0.7), 0.4, Color(0.8, 1.0, 0.55), 2.2)
 	for i in 12:
-		Forge.sphere(glade, rng.randf_range(0.03, 0.06), mote,
+		var m := Forge.sphere(glade, rng.randf_range(0.03, 0.06), mote,
 			Vector3(_pool_pos.x + rng.randf_range(-4.5, 4.5),
 				water_y + rng.randf_range(0.5, 2.8),
 				_pool_pos.y + rng.randf_range(-3.5, 4.5)))
+		_register_mote(m, rng.randf() * TAU)
 	Forge.omni(glade, Color(0.75, 0.95, 0.7), 0.9, 12.0, Vector3(_pool_pos.x, water_y + 2.2, _pool_pos.y + 1.0))
 
 ## Looking back across the water: the island, small and hazy, its tower a
@@ -491,6 +539,12 @@ func _build_jetty_and_boat() -> void:
 			Forge.cyl(jetty, 0.11, 0.13, 3.6, wood_dark, Vector3(side * 1.05, -0.45, z), Vector3.ZERO, 8)
 	Forge.collider_box(jetty, Vector3(2.4, 0.25, 11.6), Vector3(0, 1.03, 79.6))
 
+	# A mooring post with the charmed knot, and a spare coil on the planks.
+	var rope_mat := Forge.mat(Color(0.60, 0.50, 0.36), 0.95)
+	Forge.cyl(jetty, 0.09, 0.11, 1.3, wood_dark, Vector3(1.15, 1.5, 83.4), Vector3(0, 0, 0.08), 8)
+	Forge.torus(jetty, 0.10, 0.16, rope_mat, Vector3(1.15, 1.95, 83.4), Vector3(0.25, 0, 0))
+	Forge.cyl(jetty, 0.025, 0.025, 1.5, rope_mat, Vector3(1.85, 1.55, 83.7), Vector3(0.25, 0, 1.15), 5)
+	Forge.torus(jetty, 0.12, 0.24, rope_mat, Vector3(-0.6, 1.14, 77.5), Vector3(0.06, 0, 0))
 	_boat = Node3D.new()
 	add_child(_boat)
 	_boat.position = Vector3(2.8, _boat_base_y, 84.0)
@@ -513,6 +567,14 @@ func _build_boat_hull(boat: Node3D) -> void:
 	Forge.box(boat, Vector3(1.05, 0.07, 0.42), wood, Vector3(0, 0.34, 0.2))
 	Forge.cyl(boat, 0.035, 0.035, 2.1, wood_dark, Vector3(-0.2, 0.5, -0.5), Vector3(0.3, 0.4, 1.2), 6)
 	Forge.cyl(boat, 0.035, 0.035, 2.1, wood_dark, Vector3(0.25, 0.5, -0.3), Vector3(0.3, -0.5, -1.2), 6)
+	# The bow lantern: the charm's one visible tell, lit whether or not
+	# anyone is aboard.
+	Forge.cyl(boat, 0.025, 0.035, 0.55, wood_dark, Vector3(0, 0.7, -1.35), Vector3(0.25, 0, 0), 6)
+	var lamp := Forge.mat(Color(1.0, 0.85, 0.55), 0.3, Color(1.0, 0.78, 0.42), 2.0)
+	Forge.box(boat, Vector3(0.11, 0.14, 0.11), lamp, Vector3(0, 0.94, -1.42))
+	Forge.box(boat, Vector3(0.14, 0.02, 0.14), wood_dark, Vector3(0, 1.02, -1.42))
+	var lamp_light := Forge.omni(boat, Color(1.0, 0.8, 0.5), 0.55, 6.0, Vector3(0, 0.95, -1.42))
+	_register_pulse(lamp, lamp_light)
 
 func _boat_seat() -> Node3D:
 	var seat: Node3D = _boat.get_node_or_null("Seat")
@@ -716,6 +778,16 @@ func _build_ruin() -> void:
 	Forge.cyl(root, 2.6, 2.9, 0.4, stone_dark, Vector3(0, 0.2, 0), Vector3.ZERO, 20)
 	Forge.collider_cyl(root, 2.8, 0.5, Vector3(0, 0.2, 0))
 	Forge.torus(root, 1.05, 1.35, Forge.mat(Color(0.33, 0.34, 0.36), 0.92), Vector3(0, 1.85, 0), Vector3(PI / 2.0, 0, 0))
+	# The ring has shed pieces; a crack runs the dais; worn sigils circle
+	# its rim, waiting to mean something again.
+	var shard := Forge.mat(Color(0.30, 0.31, 0.33), 0.9)
+	Forge.box(root, Vector3(0.55, 0.16, 0.2), shard, Vector3(1.4, 0.46, 0.9), Vector3(0.2, 0.7, 0.5))
+	Forge.box(root, Vector3(0.4, 0.14, 0.18), shard, Vector3(-1.7, 0.44, 0.6), Vector3(-0.1, 2.2, 0.3))
+	Forge.box(root, Vector3(3.8, 0.02, 0.06), Forge.mat(Color(0.18, 0.18, 0.19), 1.0), Vector3(0.4, 0.41, 0.2), Vector3(0, 0.5, 0))
+	for i in 10:
+		var sa := TAU * i / 10.0 + 0.3
+		Forge.box(root, Vector3(0.16, 0.02, 0.16), Forge.mat(Color(0.26, 0.27, 0.29), 0.95),
+			Vector3(cos(sa) * 2.2, 0.41, sin(sa) * 2.2), Vector3(0, sa, 0))
 	var ring_shape := BoxShape3D.new()
 	ring_shape.size = Vector3(2.6, 3.0, 0.7)
 	_ring_root = root
@@ -724,28 +796,66 @@ func _build_ruin() -> void:
 		Transform3D(Basis.IDENTITY, Vector3(0, 1.85, 0)))
 	root.add_child(_ring_body)
 
-	# The boundary stone, out past the fallen arc.
+	# The boundary stone, out past the fallen arc. The letters are worn
+	# shallow, but the rain has kept them clean.
 	var tablet := Node3D.new()
 	root.add_child(tablet)
 	tablet.position = Vector3(5.6, 0, -5.2)
 	tablet.rotation.y = -0.6
 	Forge.box(tablet, Vector3(1.5, 2.2, 0.35), stone_mossy, Vector3(0, 0.9, 0), Vector3(rng.randf_range(-0.06, 0.02), 0, 0.07))
 	Forge.box(tablet, Vector3(1.1, 1.5, 0.06), stone_dark, Vector3(0, 1.05, 0.17), Vector3(0, 0, 0.07))
+	# Rows of worn carving on the face.
+	var glyph := Forge.mat(Color(0.24, 0.24, 0.24), 0.98)
+	for row in 6:
+		var gy := 1.62 - row * 0.19
+		var gx := -0.42
+		while gx < 0.38:
+			var gw := rng.randf_range(0.08, 0.22)
+			if rng.randf() > 0.2:
+				Forge.box(tablet, Vector3(gw, 0.05, 0.015), glyph,
+					Vector3(gx + gw / 2.0 + gy * 0.07, gy, 0.205), Vector3(0, 0, 0.07))
+			gx += gw + 0.05
+	# A chipped crown, the spall lying where it fell, moss climbing after it.
+	Forge.box(tablet, Vector3(0.5, 0.35, 0.36), stone_dark, Vector3(0.55, 2.0, 0.0), Vector3(0.1, 0.3, 0.35))
+	Forge.box(tablet, Vector3(0.4, 0.25, 0.3), stone_mossy, Vector3(1.1, 0.12, 0.5), Vector3(0.3, 0.8, 0.2))
+	var moss_pad := Forge.mat(Color(0.24, 0.37, 0.16), 0.95)
+	Forge.sphere(tablet, 0.34, moss_pad, Vector3(-0.55, 0.25, 0.12), Vector3(1.0, 0.65, 0.6))
+	Forge.sphere(tablet, 0.22, moss_pad, Vector3(0.5, 0.6, 0.16), Vector3(0.8, 1.3, 0.4))
+	for i in 4:
+		Forge.sphere(tablet, rng.randf_range(0.07, 0.13), stone_dark,
+			Vector3(rng.randf_range(-0.8, 0.8), 0.05, rng.randf_range(0.3, 0.7)), Vector3(1, 0.6, 1))
 	var tablet_shape := BoxShape3D.new()
 	tablet_shape.size = Vector3(1.7, 2.4, 0.7)
 	tablet.add_child(Interactable.make(tablet_shape, "Read the boundary stone", func(p: Node) -> void:
 		(p as Player).open_book(BookLore.tablet()),
 		Transform3D(Basis.IDENTITY, Vector3(0, 1.1, 0))))
 
-	# The lectern, and the journal the wizard left for the last word.
+	# The lectern, and the journal the wizard left for the last word —
+	# lying open, mid-entry, as if he only just stepped away.
 	var lectern := Node3D.new()
 	root.add_child(lectern)
 	lectern.position = Vector3(0, 0.4, 2.1)
 	lectern.rotation.y = PI
-	Forge.box(lectern, Vector3(0.7, 1.1, 0.5), stone, Vector3(0, 0.55, 0))
+	Forge.box(lectern, Vector3(0.9, 0.16, 0.7), stone_dark, Vector3(0, 0.08, 0))
+	Forge.box(lectern, Vector3(0.62, 1.0, 0.42), stone, Vector3(0, 0.6, 0))
+	Forge.box(lectern, Vector3(0.7, 0.06, 0.5), stone_dark, Vector3(0, 0.72, 0))
 	Forge.box(lectern, Vector3(0.9, 0.08, 0.7), stone_dark, Vector3(0, 1.14, 0.05), Vector3(-0.35, 0, 0))
-	Forge.box(lectern, Vector3(0.5, 0.09, 0.36), Forge.mat(Color(0.32, 0.20, 0.12), 0.8), Vector3(0, 1.24, 0.03), Vector3(-0.35, 0, 0))
-	Forge.box(lectern, Vector3(0.46, 0.03, 0.32), Forge.mat(Color(0.88, 0.84, 0.72), 0.9), Vector3(0, 1.30, 0.05), Vector3(-0.35, 0, 0))
+	var cover := Forge.mat(Color(0.32, 0.20, 0.12), 0.8)
+	var page := Forge.mat(Color(0.90, 0.86, 0.74), 0.9)
+	var ink := Forge.mat(Color(0.32, 0.26, 0.18), 0.95)
+	Forge.box(lectern, Vector3(0.52, 0.05, 0.38), cover, Vector3(0, 1.22, 0.03), Vector3(-0.35, 0, 0))
+	# Two leaves opened in a shallow V.
+	for side: float in [-1.0, 1.0]:
+		var px := side * 0.125
+		Forge.box(lectern, Vector3(0.24, 0.035, 0.34), page,
+			Vector3(px, 1.27, 0.03), Vector3(-0.35, 0, side * -0.22))
+		for line in 4:
+			Forge.box(lectern, Vector3(0.17, 0.004, 0.02), ink,
+				Vector3(px, 1.295 - side * px * 0.22, -0.09 + line * 0.075), Vector3(-0.35, 0, side * -0.22))
+	# A ribbon marker trailing off the sill.
+	Forge.box(lectern, Vector3(0.035, 0.008, 0.42), Forge.mat(Color(0.48, 0.14, 0.14), 0.85),
+		Vector3(0.04, 1.24, 0.22), Vector3(-0.35, 0.1, 0))
+	Forge.omni(lectern, Color(1.0, 0.92, 0.72), 0.4, 3.5, Vector3(0, 1.7, 0.1))
 	var lectern_shape := BoxShape3D.new()
 	lectern_shape.size = Vector3(1.0, 1.7, 0.9)
 	lectern.add_child(Interactable.make(lectern_shape, "Read the wizard's journal", func(p: Node) -> void:
@@ -755,6 +865,11 @@ func _build_ruin() -> void:
 
 	# Fireflies of a sort: faint motes where the magic soaked in.
 	Forge.omni(root, Color(0.55, 0.75, 0.65), 0.7, 9.0, Vector3(0, 2.4, 0))
+	var ruin_mote := Forge.mat(Color(0.72, 0.85, 0.72), 0.4, Color(0.6, 0.9, 0.65), 1.6)
+	for i in 7:
+		var m := Forge.sphere(root, rng.randf_range(0.025, 0.05), ruin_mote,
+			Vector3(rng.randf_range(-5.5, 5.5), rng.randf_range(0.8, 3.2), rng.randf_range(-5.5, 5.5)))
+		_register_mote(m, rng.randf() * TAU)
 
 # -- the secrets ----------------------------------------------------------------
 
@@ -765,8 +880,11 @@ func _build_kept_books() -> void:
 	for kp: Vector2 in KEPT_POSITIONS:
 		spots.append(kp)
 	spots.append(Vector2(_pool_pos.x - 4.6, _pool_pos.y + 3.5))  # the spring keeps the fifth
-	var glow_mat := Forge.mat(Color(0.45, 0.36, 0.20), 0.6, Color(0.75, 0.95, 0.45), 1.3)
 	var page_mat := Forge.mat(Color(0.90, 0.87, 0.74), 0.85)
+	var bark_mat := Forge.mat(Color(0.26, 0.19, 0.12), 0.95)
+	var moss_mat := Forge.mat(Color(0.22, 0.36, 0.15), 0.95)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 808080
 	for i in spots.size():
 		var s2 := spots[i]
 		var h := height_at(s2.x, s2.y)
@@ -776,10 +894,39 @@ func _build_kept_books() -> void:
 		host.rotation.y = float(i) * 1.3
 		Forge.mesh(host, Flora.broadleaf_mesh(920 + i), null, Vector3.ZERO, Vector3.ZERO, Vector3(1.9, 1.9, 1.9))
 		Forge.collider_cyl(host, 0.55, 3.0, Vector3(0, 1.5, 0))
-		# The book, half-swallowed by the trunk, spine out.
+		# The book, half-swallowed by the trunk, spine out; each breathes
+		# its own light.
+		var glow_mat := Forge.mat(Color(0.45, 0.36, 0.20), 0.6, Color(0.75, 0.95, 0.45), 1.3)
 		Forge.box(host, Vector3(0.13, 0.46, 0.34), glow_mat, Vector3(0.42, 1.35, 0), Vector3(0, 0, 0.12))
 		Forge.box(host, Vector3(0.09, 0.40, 0.28), page_mat, Vector3(0.50, 1.35, 0), Vector3(0, 0, 0.12))
-		Forge.omni(host, Color(0.7, 0.95, 0.5), 0.55, 5.5, Vector3(0.7, 1.5, 0))
+		# The trunk has grown lips of bark over the covers.
+		Forge.box(host, Vector3(0.34, 0.11, 0.46), bark_mat, Vector3(0.34, 1.64, 0), Vector3(0.1, 0, 0.42))
+		Forge.box(host, Vector3(0.34, 0.13, 0.48), bark_mat, Vector3(0.33, 1.06, 0), Vector3(-0.08, 0, -0.34))
+		# Tendrils curling toward the pages, and moss where they hold on.
+		for tdx in 3:
+			var ta := rng.randf_range(-0.7, 0.7)
+			var base := Vector3(0.36, 1.05 + tdx * 0.28, ta * 0.3)
+			var mid := base + Vector3(0.22, 0.12, rng.randf_range(-0.08, 0.08))
+			var tip := mid + Vector3(0.10, 0.16, rng.randf_range(-0.06, 0.06))
+			Forge.cyl(host, 0.018, 0.028, base.distance_to(mid), moss_mat,
+				(base + mid) / 2.0, Vector3(0, 0, -0.9 - ta * 0.3), 5)
+			Forge.cyl(host, 0.010, 0.018, mid.distance_to(tip), moss_mat,
+				(mid + tip) / 2.0, Vector3(0.3, 0, -0.5 - ta * 0.3), 5)
+		Forge.sphere(host, 0.26, moss_mat, Vector3(0.28, 1.72, 0.12), Vector3(1.0, 0.45, 1.0))
+		Forge.sphere(host, 0.20, moss_mat, Vector3(0.30, 1.00, -0.16), Vector3(1.0, 0.4, 1.0))
+		# Loose page-motes circle the book, slow as thought.
+		var piv := Node3D.new()
+		host.add_child(piv)
+		piv.position = Vector3(0.5, 1.42, 0)
+		var mote_mat := Forge.mat(Color(0.94, 0.92, 0.80), 0.5, Color(0.9, 0.95, 0.6), 0.9)
+		for m in 3:
+			var ma := TAU * m / 3.0
+			Forge.box(piv, Vector3(0.07, 0.006, 0.05), mote_mat,
+				Vector3(cos(ma) * 0.55, m * 0.16 - 0.1, sin(ma) * 0.55),
+				Vector3(rng.randf_range(-0.4, 0.4), ma, rng.randf_range(-0.3, 0.3)))
+		_orbit_pivots.append(piv)
+		var light := Forge.omni(host, Color(0.7, 0.95, 0.5), 0.55, 5.5, Vector3(0.7, 1.5, 0))
+		_register_pulse(glow_mat, light)
 		var shape := BoxShape3D.new()
 		shape.size = Vector3(1.0, 1.2, 1.0)
 		var idx := i
@@ -805,12 +952,23 @@ func _wake_ring() -> void:
 	if _ring_root == null or _ring_body == null:
 		return
 	var hue := Color(0.45, 0.95, 0.55)
-	Forge.torus(_ring_root, 1.02, 1.38, Forge.mat(hue * 0.4, 0.3, hue, 2.6), Vector3(0, 1.85, 0), Vector3(PI / 2.0, 0, 0))
+	var ring_glow := Forge.mat(hue * 0.4, 0.3, hue, 2.6)
+	Forge.torus(_ring_root, 1.02, 1.38, ring_glow, Vector3(0, 1.85, 0), Vector3(PI / 2.0, 0, 0))
 	var disc := Forge.mat(Color(hue.r, hue.g, hue.b, 0.5), 0.1, hue, 1.4)
 	disc.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	disc.cull_mode = BaseMaterial3D.CULL_DISABLED
 	Forge.cyl(_ring_root, 1.02, 1.02, 0.04, disc, Vector3(0, 1.85, 0), Vector3(PI / 2.0, 0, 0), 32)
-	Forge.omni(_ring_root, hue, 1.3, 9.0, Vector3(0, 2.0, 1.0))
+	var light := Forge.omni(_ring_root, hue, 1.3, 9.0, Vector3(0, 2.0, 1.0))
+	_register_pulse(ring_glow, light)
+	# The rim sigils remember their meaning, and sparks circle the door.
+	var piv := Node3D.new()
+	_ring_root.add_child(piv)
+	piv.position = Vector3(0, 1.85, 0)
+	var spark := Forge.mat(hue * 0.6, 0.3, hue, 3.0)
+	for i in 5:
+		var sa := TAU * i / 5.0
+		Forge.sphere(piv, 0.045, spark, Vector3(cos(sa) * 1.6, sin(sa * 2.0) * 0.5, sin(sa) * 1.6))
+	_orbit_pivots.append(piv)
 	_ring_body.prompt = "Step through the wizard's last door"
 	_ring_body.action = func(p: Node) -> void:
 		var pl := p as Player
@@ -859,6 +1017,32 @@ func _build_hollow() -> void:
 	for i in 3:
 		Forge.cyl(hollow, 0.035, 0.045, rng.randf_range(0.08, 0.16), Forge.mat(Color(0.90, 0.87, 0.78), 0.6),
 			Vector3(-1.3 + i * 0.18, 1.25, -0.55 + i * 0.08), Vector3.ZERO, 6)
+	# Wax has run down the shelf under the stubs.
+	var wax := Forge.mat(Color(0.88, 0.85, 0.76), 0.7)
+	for i in 3:
+		Forge.sphere(hollow, rng.randf_range(0.03, 0.05), wax,
+			Vector3(-1.28 + i * 0.17, 1.19, -0.5 + i * 0.09), Vector3(1, 0.35, 1))
+	# A dead lantern on a hook beside the opening; nobody has lit it in a
+	# long while.
+	Forge.cyl(hollow, 0.02, 0.03, 0.5, bark, Vector3(1.9, 2.6, 1.3), Vector3(0, 0, 0.5), 6)
+	var frame := Forge.mat(Color(0.16, 0.15, 0.14), 0.6)
+	Forge.box(hollow, Vector3(0.16, 0.24, 0.16), Forge.mat(Color(0.35, 0.37, 0.36, 0.5), 0.2), Vector3(2.08, 2.32, 1.3))
+	for corner: float in [-0.07, 0.07]:
+		Forge.box(hollow, Vector3(0.02, 0.26, 0.02), frame, Vector3(2.08 + corner, 2.32, 1.37))
+		Forge.box(hollow, Vector3(0.02, 0.26, 0.02), frame, Vector3(2.08 + corner, 2.32, 1.23))
+	Forge.box(hollow, Vector3(0.18, 0.02, 0.18), frame, Vector3(2.08, 2.46, 1.3))
+	# The washing line: strung from the trunk toward a young pine, one
+	# shirt forgotten on it. (The spring is unhidden on washing days.)
+	var line_a := Vector3(1.6, 2.4, -1.5)
+	var line_b := Vector3(4.8, 2.1, -3.4)
+	Forge.cyl(hollow, 0.012, 0.012, line_a.distance_to(line_b), Forge.mat(Color(0.55, 0.50, 0.42), 0.9),
+		(line_a + line_b) / 2.0, Vector3(PI / 2.0 - 0.08, atan2(line_b.x - line_a.x, line_b.z - line_a.z), 0), 5)
+	Forge.box(hollow, Vector3(0.44, 0.55, 0.02), Forge.mat(Color(0.78, 0.74, 0.66), 0.95),
+		(line_a + line_b) / 2.0 + Vector3(0, -0.29, 0), Vector3(0, atan2(line_b.x - line_a.x, line_b.z - line_a.z) + PI / 2.0, 0.05))
+	Forge.mesh(hollow, Flora.pine_mesh(77), null, Vector3(5.0, -0.2, -3.7), Vector3.ZERO, Vector3(0.7, 0.65, 0.7))
+	# Two well-thumbed books of the hermit's own, by the bedroll.
+	Forge.box(hollow, Vector3(0.34, 0.06, 0.24), Forge.mat(Color(0.34, 0.28, 0.22), 0.9), Vector3(-0.85, 0.06, 1.25), Vector3(0, 0.3, 0))
+	Forge.box(hollow, Vector3(0.3, 0.05, 0.22), Forge.mat(Color(0.25, 0.30, 0.28), 0.9), Vector3(-0.82, 0.12, 1.28), Vector3(0, 0.7, 0))
 	# The note, folded on the shelf.
 	Forge.box(hollow, Vector3(0.26, 0.02, 0.2), Forge.mat(Color(0.92, 0.90, 0.82), 0.8), Vector3(-1.55, 1.22, -0.35), Vector3(0, 0.4, 0))
 	var note_shape := BoxShape3D.new()
