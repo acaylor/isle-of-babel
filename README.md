@@ -17,7 +17,7 @@ reason the island exists. The wizard left his journal on the lectern there.
 
 ## Running it
 
-Requires [Godot 4.6+](https://godotengine.org/download). No other
+Requires [Godot 4.7+](https://godotengine.org/download). No other
 dependencies and no assets to download — every mesh, material and book in
 the game is generated procedurally at runtime.
 
