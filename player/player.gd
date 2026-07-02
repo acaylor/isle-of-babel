@@ -27,6 +27,9 @@ var _message_timer: Timer
 
 var _reading := false
 var _consume_interact := false
+var _book_pages: Array = []
+var _book_page_i := 0
+var _seat: Node3D
 var _book_root: Control
 var _book_title: Label
 var _book_author: Label
@@ -229,7 +232,12 @@ func _page_spacer() -> Control:
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	return spacer
 
-func open_book(book: Dictionary) -> void:
+## Open the reading UI. Pass `pages` for a fixed text (the ruin's journal):
+## F then leafs through those pages in order instead of pulling another
+## random book off the shelf.
+func open_book(book: Dictionary, pages: Array = []) -> void:
+	_book_pages = pages
+	_book_page_i = 0
 	_fill_book(book)
 	_book_root.visible = true
 	_reading = true
@@ -239,6 +247,23 @@ func open_book(book: Dictionary) -> void:
 func close_book() -> void:
 	_reading = false
 	_book_root.visible = false
+
+func _flip_page() -> void:
+	if _book_pages.size() > 1:
+		_book_page_i = (_book_page_i + 1) % _book_pages.size()
+		_fill_book(_book_pages[_book_page_i])
+	else:
+		_fill_book(BookLore.random_book())
+
+## Seat the player on a moving node (the boat). Position follows the seat;
+## the head stays free to look around. stand() releases them.
+func sit(seat: Node3D) -> void:
+	_seat = seat
+	velocity = Vector3.ZERO
+	_prompt_label.text = ""
+
+func stand() -> void:
+	_seat = null
 
 func _fill_book(book: Dictionary) -> void:
 	_book_title.text = book.title
@@ -264,7 +289,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_consume_interact = true
 			get_viewport().set_input_as_handled()
 		elif event.is_action_pressed("flip"):
-			_fill_book(BookLore.random_book())
+			_flip_page()
 			get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -276,6 +301,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _physics_process(delta: float) -> void:
+	if _seat:
+		velocity = Vector3.ZERO
+		global_position = _seat.global_position
+		return
+
 	if not is_on_floor():
 		velocity.y -= _gravity * delta
 	elif Input.is_action_just_pressed("jump") and not _reading:

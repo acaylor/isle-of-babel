@@ -9,7 +9,7 @@ var _test_shelf: Interactable
 
 func _process(delta: float) -> void:
 	_time += delta
-	if _time > 19.0:
+	if _time > 40.0:
 		_fail("timed out in stage %d" % _stage)
 	match _stage:
 		0:
@@ -90,6 +90,47 @@ func _process(delta: float) -> void:
 					_fail("menu spawn did not build the title screen")
 				elif not cs.find_children("", "CharacterBody3D", true, false).is_empty():
 					_fail("title screen should not spawn a player")
+				else:
+					Game.travel("res://scenes/forest.tscn", "jetty")
+		8:
+			if _time > 18.0:
+				_stage = 9
+				_expect_scene("Forest")
+				var p := _expect_player()
+				if p and p.global_position.y < -1.0:
+					_fail("player fell through the forest")
+				if p:
+					var pages := BookLore.journal_pages()
+					if pages.size() < 3:
+						_fail("the wizard's journal has too few pages")
+					for page in pages:
+						for field in ["title", "chapter", "body"]:
+							if String(page[field]).is_empty():
+								_fail("journal page has an empty %s" % field)
+					p.open_book(pages[0], pages)
+					p._flip_page()
+					if p._book_page_i != 1:
+						_fail("F did not leaf to the journal's next page")
+					p.close_book()
+					if String(BookLore.tablet()["body"]).is_empty():
+						_fail("the boundary stone has no inscription")
+					# Ride the arrival leg of the voyage end to end.
+					Game.travel("res://scenes/forest.tscn", "voyage")
+		9:
+			if _time > 23.0:
+				_stage = 10
+				_expect_scene("Forest")
+				var p := _expect_player()
+				if p and p._seat == null:
+					_fail("voyage spawn should seat the player in the boat")
+		10:
+			if _time > 36.0:
+				_stage = 11
+				var p := _expect_player()
+				if p and p._seat != null:
+					_fail("the boat never delivered the player to the jetty")
+				elif p and (p.global_position.z < 70.0 or p.global_position.z > 92.0):
+					_fail("disembarked in the wrong place, z=%.1f" % p.global_position.z)
 				else:
 					print("SMOKE OK")
 					get_tree().quit(0)

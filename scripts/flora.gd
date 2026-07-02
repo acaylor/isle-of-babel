@@ -248,6 +248,128 @@ static func grass_mesh(seed_v: int, flower := Color(0, 0, 0, 0)) -> ArrayMesh:
 				Vector3.UP, Vector3.UP, Vector3.UP, heart, flower, flower)
 	return _finish(st)
 
+# -- forest floor ------------------------------------------------------------
+
+## A fern: arched fronds radiating from a crown, each a spine of chevroned
+## leaflets that shrink toward the tip. Normals point up like the grass so
+## the forest floor lights evenly.
+static func fern_mesh(seed_v: int) -> ArrayMesh:
+	var rng := _rng(seed_v)
+	var st := _begin()
+	var deep := Color(0.10, 0.24, 0.10)
+	var mid := Color(0.18, 0.36, 0.14)
+	var bright := Color(0.30, 0.50, 0.20)
+	var fronds := rng.randi_range(6, 9)
+	for i in fronds:
+		var a := TAU * i / fronds + rng.randf_range(-0.25, 0.25)
+		var out := Vector3(cos(a), 0, sin(a))
+		var across := Vector3(-sin(a), 0, cos(a))
+		var length := rng.randf_range(0.55, 0.9)
+		var rise := rng.randf_range(0.30, 0.45)
+		var stations := 6
+		var spine: Array[Vector3] = []
+		for s in stations + 1:
+			var t := float(s) / stations
+			# Arch up and out, then droop past the crest.
+			var y := rise * sin(t * PI * 0.72)
+			spine.append(out * (t * length) + Vector3(0, y, 0))
+		for s in stations:
+			var t := float(s) / stations
+			var p0 := spine[s]
+			var p1 := spine[s + 1]
+			var c0 := deep.lerp(bright, t)
+			var c1 := deep.lerp(bright, t + 1.0 / stations)
+			# Spine ribbon.
+			var w := 0.012 * (1.0 - t * 0.7)
+			_tri(st, p0 - across * w, p0 + across * w, p1, Vector3.UP, Vector3.UP, Vector3.UP, c0, c0, c1)
+			# A pair of leaflets, shrinking toward the tip.
+			var leaflet := lerpf(0.16, 0.035, t) * rng.randf_range(0.85, 1.15)
+			var back := (p0 - p1).normalized() * leaflet * 0.55
+			for side: float in [-1.0, 1.0]:
+				var tip_p := p0 + across * side * leaflet + back * 0.4 + Vector3(0, -0.01, 0)
+				_tri(st, p0, p1.lerp(p0, 0.45), tip_p,
+					Vector3.UP, Vector3.UP, Vector3.UP,
+					mid.lerp(bright, t), c1, deep.lerp(mid, t))
+	return _finish(st)
+
+## A fallen, moss-topped log: a tapered trunk lying along +X with broken
+## end rings, a couple of branch stubs, and a few small mushrooms.
+static func log_mesh(seed_v: int) -> ArrayMesh:
+	var rng := _rng(seed_v)
+	var st := _begin()
+	var bark := Color(0.24, 0.17, 0.11)
+	var bark_hi := Color(0.33, 0.25, 0.15)
+	var moss := Color(0.20, 0.33, 0.13)
+	var heart := Color(0.52, 0.40, 0.26)
+	var length := rng.randf_range(2.8, 4.2)
+	var r0 := rng.randf_range(0.26, 0.36)
+	var r1 := r0 * rng.randf_range(0.7, 0.85)
+	var sectors := 10
+	var segs := 5
+	# Trunk, colored per-vertex: moss creeps over the upper faces.
+	for k in segs:
+		var t0 := float(k) / segs
+		var t1 := float(k + 1) / segs
+		var x0 := lerpf(-length / 2.0, length / 2.0, t0)
+		var x1 := lerpf(-length / 2.0, length / 2.0, t1)
+		var sag0 := sin(t0 * PI) * 0.03
+		var sag1 := sin(t1 * PI) * 0.03
+		var rr0 := lerpf(r0, r1, t0)
+		var rr1 := lerpf(r0, r1, t1)
+		for j in sectors:
+			var a0 := TAU * j / sectors
+			var a1 := TAU * (j + 1) / sectors
+			var d0 := Vector3(0, cos(a0), sin(a0))
+			var d1 := Vector3(0, cos(a1), sin(a1))
+			var lump0 := rng.randf_range(0.92, 1.08)
+			var lump1 := rng.randf_range(0.92, 1.08)
+			var v00 := Vector3(x0, -sag0, 0) + d0 * rr0 * lump0
+			var v01 := Vector3(x0, -sag0, 0) + d1 * rr0 * lump1
+			var v10 := Vector3(x1, -sag1, 0) + d0 * rr1 * lump0
+			var v11 := Vector3(x1, -sag1, 0) + d1 * rr1 * lump1
+			var base0 := bark.lerp(bark_hi, rng.randf_range(0.0, 0.6))
+			var c0 := base0.lerp(moss, clampf(d0.y * 1.4 - 0.2, 0.0, 1.0))
+			var c1 := base0.lerp(moss, clampf(d1.y * 1.4 - 0.2, 0.0, 1.0))
+			_tri(st, v00, v01, v11, d0, d1, d1, c0, c1, c1)
+			_tri(st, v00, v11, v10, d0, d1, d0, c0, c1, c0)
+	# Broken end faces: pale heartwood fans.
+	for end in [[-length / 2.0, r0, -1.0], [length / 2.0, r1, 1.0]]:
+		var cx: float = end[0]
+		var cr: float = end[1]
+		var n := Vector3(end[2], 0, 0)
+		for j in sectors:
+			var a0 := TAU * j / sectors
+			var a1 := TAU * (j + 1) / sectors
+			var jag := rng.randf_range(0.75, 1.0)
+			_tri(st, Vector3(cx, 0, 0),
+				Vector3(cx, cos(a0) * cr * jag, sin(a0) * cr * jag),
+				Vector3(cx, cos(a1) * cr * jag, sin(a1) * cr * jag),
+				n, n, n, heart, heart * 0.8, heart * 0.8)
+	# Branch stubs.
+	for i in rng.randi_range(1, 3):
+		var bx := rng.randf_range(-length * 0.35, length * 0.35)
+		var ba := rng.randf_range(0.4, 2.6)
+		var dir := Vector3(rng.randf_range(-0.3, 0.3), cos(ba), sin(ba)).normalized()
+		var root := Vector3(bx, 0, 0) + dir * lerpf(r0, r1, 0.5) * 0.8
+		_tube(st, root, root + dir * rng.randf_range(0.3, 0.7), 0.07, 0.03, 6, bark, bark_hi)
+	# Mushrooms sheltering on top.
+	for i in rng.randi_range(2, 4):
+		var mx := rng.randf_range(-length * 0.4, length * 0.4)
+		var m_base := Vector3(mx, lerpf(r0, r1, (mx / length) + 0.5) * 0.9, rng.randf_range(-0.08, 0.08))
+		var stem_c := Color(0.85, 0.80, 0.68)
+		var cap_c := Color(0.62, 0.38, 0.22).lerp(Color(0.72, 0.55, 0.30), rng.randf())
+		var m_h := rng.randf_range(0.06, 0.12)
+		_tube(st, m_base, m_base + Vector3(0, m_h, 0), 0.018, 0.014, 5, stem_c, stem_c)
+		var cap_r := rng.randf_range(0.04, 0.08)
+		for j in 6:
+			var a0 := TAU * j / 6.0
+			var a1 := TAU * (j + 1) / 6.0
+			_tri(st, m_base + Vector3(0, m_h + cap_r * 0.55, 0),
+				m_base + Vector3(cos(a0) * cap_r, m_h - 0.005, sin(a0) * cap_r),
+				m_base + Vector3(cos(a1) * cap_r, m_h - 0.005, sin(a1) * cap_r),
+				Vector3.UP, Vector3.UP, Vector3.UP, cap_c, cap_c * 0.75, cap_c * 0.75)
+	return _finish(st)
+
 # -- mountains ---------------------------------------------------------------
 
 ## A ridged mountain with a lobed footprint, forest-mottled lower slopes,

@@ -5,6 +5,8 @@ extends Node3D
 
 const PlayerScript := preload("res://player/player.gd")
 const LIBRARY := "res://scenes/library.tscn"
+const FOREST := "res://scenes/forest.tscn"
+const BOAT_SPEED := 5.5
 
 const ISLAND_RADIUS := 70.0
 const TERRAIN_SIZE := 180.0
@@ -25,6 +27,9 @@ var _crystal: MeshInstance3D
 var _crystal_base_y := 0.0
 var _spawns := {}
 var _menu_pivot: Node3D
+var _voyage_points: Array[Vector3] = []
+var _voyage_i := 0
+var _voyage_done: Callable
 
 func _ready() -> void:
 	_noise.seed = 7041
@@ -54,6 +59,7 @@ func _process(delta: float) -> void:
 		_boat.position.y = _boat_base_y + sin(_t * 1.1) * 0.06
 		_boat.rotation.z = sin(_t * 0.9) * 0.03
 		_boat.rotation.x = sin(_t * 0.7) * 0.02
+		_voyage_step(delta)
 	if _crystal:
 		_crystal.rotation.y += delta * 0.6
 		_crystal.position.y = _crystal_base_y + sin(_t * 1.4) * 0.12
@@ -528,9 +534,62 @@ func _build_dock_and_boat() -> void:
 	Forge.cyl(_boat, 0.035, 0.035, 2.1, wood_dark, Vector3(0.25, 0.5, -0.3), Vector3(0.3, -0.5, -1.2), 6)
 	var boat_shape := BoxShape3D.new()
 	boat_shape.size = Vector3(1.5, 1.1, 3.2)
-	_boat.add_child(Interactable.make(boat_shape, "Examine the boat", func(p: Node) -> void:
-		p.show_message("The rowboat tugs gently at its mooring. Across the water, the forested shore waits beneath the mountains.\n\n(A voyage for another day.)"),
+	_boat.add_child(Interactable.make(boat_shape, "Set out for the far shore", func(p: Node) -> void:
+		_start_voyage(p as Player),
 		Transform3D(Basis.IDENTITY, Vector3(0, 0.4, 0))))
+
+# -- the voyage ----------------------------------------------------------------
+# The enchanted rowboat: sit in it and it rows itself. The outbound leg
+# glides away from the dock and fades into the forest scene, whose own
+# arrival leg finishes the crossing; the reverse trip mirrors it.
+
+func _boat_seat() -> Node3D:
+	var seat: Node3D = _boat.get_node_or_null("Seat")
+	if seat == null:
+		seat = Node3D.new()
+		seat.name = "Seat"
+		_boat.add_child(seat)
+		seat.position = Vector3(0, 0.45, 0.2)
+	return seat
+
+func _start_voyage(player: Player) -> void:
+	if not _voyage_points.is_empty():
+		return
+	player.sit(_boat_seat())
+	player.show_message("The mooring knot unties itself. Across the water, the old forest waits beneath the mountains.", 6.0)
+	_voyage_points = [Vector3(6.0, 0, 80.0), Vector3(2.0, 0, 106.0), Vector3(-2.0, 0, 132.0)]
+	_voyage_i = 0
+	_voyage_done = func() -> void:
+		Game.travel(FOREST, "voyage")
+
+func _arrive_by_boat(player: Player) -> void:
+	_boat.position = Vector3(-2.0, _boat_base_y, 132.0)
+	player.sit(_boat_seat())
+	_voyage_points = [Vector3(4.5, 0, 92.0), Vector3(2.7, 0, 64.0)]
+	_voyage_i = 0
+	_voyage_done = func() -> void:
+		player.stand()
+		player.global_transform = _spawns["dock"]
+		player.velocity = Vector3.ZERO
+		player.show_message("Home water. The dock creaks its familiar greeting.", 6.0)
+
+func _voyage_step(delta: float) -> void:
+	if _voyage_points.is_empty():
+		return
+	var target := _voyage_points[_voyage_i]
+	var pos := _boat.position
+	var to := Vector3(target.x - pos.x, 0, target.z - pos.z)
+	var dist := to.length()
+	if dist < 1.0:
+		_voyage_i += 1
+		if _voyage_i >= _voyage_points.size():
+			_voyage_points = []
+			_voyage_done.call()
+		return
+	var dir := to / dist
+	_boat.position.x += dir.x * BOAT_SPEED * delta
+	_boat.position.z += dir.z * BOAT_SPEED * delta
+	_boat.rotation.y = lerp_angle(_boat.rotation.y, atan2(dir.x, dir.z), delta * 1.6)
 
 func _build_stone_circle() -> void:
 	var center := Vector2(34.0, 18.0)
@@ -577,11 +636,14 @@ func _spawn_player() -> void:
 		return
 	var player := PlayerScript.new()
 	add_child(player)
-	var t: Transform3D = _spawns.get(Game.spawn_point, _spawns["dock"])
-	player.global_transform = t
 	player.home_transform = _spawns["dock"]
 	player.fall_reset_y = -2.2
 	player.fall_message = "The lake returns you, politely, to the dock."
+	if Game.spawn_point == "voyage":
+		_arrive_by_boat(player)
+		return
+	var t: Transform3D = _spawns.get(Game.spawn_point, _spawns["dock"])
+	player.global_transform = t
 	if Game.spawn_point == "dock":
 		player.show_message("You arrive in the wizard's pocket dimension.\n\nWASD — walk · Mouse — look · Shift — run\nSpace — jump · E — interact · Esc — pause", 12.0)
 
