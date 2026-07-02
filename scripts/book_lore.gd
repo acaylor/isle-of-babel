@@ -88,6 +88,63 @@ const SENTENCES := [
 	["A footnote in the Hundredth Annal links %s to %s, and the footnote has since gone missing.", "SO"],
 ]
 
+# -- the kept books -------------------------------------------------------------
+# "What the forest reads, it keeps." Five books from the First Tower grew
+# into the living trees, each annotated in the forest's own hand. Returning
+# all five words wakes the wizard's last charm in the ruin.
+
+const KEPT_COUNT := 5
+
+static func kept_book(i: int) -> Dictionary:
+	var books := [
+		{
+			"title": "A Dictionary of the Standing Tongue",
+			"author": "Brivane the Marginalian — annotated since by roots",
+			"chapter": "The definitions have continued without her",
+			"body": "GROVE, n. — A parliament of trees, convened without adjournment.\n\nPATIENCE, n. — See GROVE. The original entry read \"the ability to wait\"; something has crossed out \"ability\" and written \"appetite,\" in letters made of veins.\n\nPATH, n. — A promise the ground makes and the walker keeps. A newer hand adds: or the reverse.\n\nWORD, n. — The seed-form of a thing. Plant one and stand back. The margin here is crowded with tiny green script, all of it the same sentence: we know, we know, we know.",
+		},
+		{
+			"title": "The Atlas of Nine Shores",
+			"author": "Quenna the Cartographer — corrected by the moss",
+			"chapter": "Every map in this volume has been redrawn at least once",
+			"body": "The third plate shows this very shore, and it is wrong in the old way: the tower standing, the trail straight, the stream politely where the surveyor left it.\n\nOver the engraving, in flat green strokes that are certainly moss and certainly deliberate, the coastline has been corrected. The tower is drawn fallen. The stream is drawn where it runs today. The trail is drawn winding, and beside it, small as a burr: this coast now correct. others to follow.\n\nThe eighth plate is an island in a vast lake. It has not been corrected. Beneath it the moss has written one word, in a hand that seems to be practicing restraint: yet.",
+		},
+		{
+			"title": "A Book of Hours",
+			"author": "set down by Cosmas of No Fixed Century — the seasons keep it now",
+			"chapter": "The forest observes different offices",
+			"body": "The hour of Prime has been struck through and relabeled Sap. The hour of Vespers is now Owl. Matins survives, but a note beside it reads: sung here by rain, when rain can be got.\n\nWhere the book prescribes prayers, the margins prescribe weather. For grief, it recommends fog. For pride, a hard frost, twice. For homesickness — and here the annotating hand grows very careful — it recommends nothing at all, and merely underlines the word home until the paper thins.\n\nThe last office in the book is Compline, the day's closing. The forest has appended a season after winter, unnamed, with a single rubric: wait.",
+		},
+		{
+			"title": "The Prudent Kitchen",
+			"author": "Ettera the Lesser — margins by the mushrooms, apparently",
+			"chapter": "On stores, hearths, and what may be safely eaten",
+			"body": "The chapter on mushrooms has been extensively revised. Against \"discard any specimen you cannot name,\" the margin replies: name us, then. We have been waiting to hear what you'll try.\n\nAgainst the recipe for a traveler's stew — one onion, marrow bones, whatever the road provides — someone has written the road provides walkers, in a hand the reader is advised not to think about at dusk.\n\nThe final page, on keeping a larder through winter, carries the book's only gentle note. Everything keeps here, it says. That is rather the trouble. Bring bread when you visit. The birds miss bread.",
+		},
+		{
+			"title": "A Child's Primer of Letters",
+			"author": "author unknown — finished by the forest",
+			"chapter": "The last word the tower ever taught",
+			"body": "A is for Acorn. B is for Bough. The pupil's exercises run down the page in wobbling charcoal, some letters reversed, all of them earnest.\n\nAt M the child's hand stops. M is for — and nothing, forever, the ink trailing to a comet's tail. Whatever called the pupil away from the lesson did not bring them back to it.\n\nThe forest finished the book. The letters after M are grown, not written: N pressed in leaf-vein, O a knot in the grain, P a seedling's hook. At Z the margin holds the only annotation in the whole primer, and it is addressed to the reader, whoever they should be: Z is for the sound the woods make when someone finally comes to take the words home.",
+		},
+	]
+	var b: Dictionary = books[clampi(i, 0, books.size() - 1)]
+	b["volume"] = 1
+	b["page"] = i + 1
+	return b
+
+## The note in the hermit's hollow: someone else has been here, and they
+## did not come by water.
+static func stranger_note() -> Dictionary:
+	return {
+		"title": "A Stranger's Note",
+		"author": "unsigned",
+		"volume": 1,
+		"chapter": "left folded on the root shelf, weighted with a candle stub",
+		"body": "If you are reading this, you came by the boat, and the boat will have told the wizard. That's all right. It never learned to see me.\n\nI did not row here. I was reading in a library that does not end — perhaps you know it — and I turned down a row I am certain was not there the day before, and at the end of the row was a door, and outside the door was this forest. The library has more doors than its keeper ever counted. I have not yet found mine again. The fire has been cold a long while, so draw your own conclusions about how the search is going.\n\nDo not worry over me. The woods and I have an understanding: I leave the books where they grew, and it leaves the way to the spring unhidden on washing days.\n\nIf you meet the wizard, do not tell him about me. If you meet the paper bird, tell it I said thank you.",
+		"page": 1,
+	}
+
 # -- the ruin's fixed texts ---------------------------------------------------
 # The First Tower on the forest shore predates the island. These are written,
 # not generated, because the ruin is where the story stops being hearsay.

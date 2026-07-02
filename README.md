@@ -58,6 +58,11 @@ godot --path .
 - Follow the cairn-marked trail over the footbridge to the ruin of the
   First Tower, read the boundary stone, and leaf through the wizard's
   journal (`F` turns its pages in order).
+- Leave the trail. Five books glow faintly where the forest keeps them —
+  return all five words and listen for what wakes in the ruin.
+- Follow the stream the wrong way.
+- Someone else has been living in the forest. Find their camp, and don't
+  tell the wizard.
 - Sail home and watch the island grow out of the haze.
 
 ## Project layout
@@ -131,5 +136,6 @@ assets arrive they won't bloat history.
 
 - Ambient audio (lake, wind, the particular quiet of infinite shelves).
 - More to find in the library: rare glowing volumes, deeper structure.
-- More to find in the forest: the trail is not the only thing under the boughs.
-- Save/load (remember where the wanderer left off).
+- Save/load (remember where the wanderer left off — and which words the
+  forest has already given back).
+- The stranger: who leaves a fire cold that long?

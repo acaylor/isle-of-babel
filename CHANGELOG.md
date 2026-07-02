@@ -4,6 +4,37 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
+## [0.4.0-alpha] — Unreleased
+
+The secrets update.
+
+### Added
+- The kept books: five books from the First Tower grew into living trees
+  off the trail, each faintly glowing, each readable — a dictionary the
+  roots kept revising, an atlas the moss corrected, a book of hours the
+  seasons observe, a cookery book with unsettling margins, and a child's
+  primer the forest finished. Returning all five words wakes the cold
+  ring in the ruin: the wizard's last charm, a one-way door home to the
+  jetty. (Progress is per-visit until save/load lands.)
+- The spring glade: follow the stream the wrong way and it ends at its
+  secret source — a waterfall down the boundary rock, a pool ringed in
+  mossy stones, drifting motes of light, and the fifth kept book at the
+  water's edge.
+- The hermit's hollow: a great split tree someone has been living in.
+  The fire is cold, the bedroll rolled, and the unsigned note on the
+  root shelf did not arrive by boat.
+- Natural boundaries: the forest cove is now walled by meandering rock
+  cliffs too steep to climb, running into the lake as headlands, with a
+  bare scree apron where the treeline breaks — no invisible walls, the
+  world ends in stone and water.
+
+### Changed
+- The stream now begins at the spring instead of running off the edge of
+  the map.
+- The smoke test collects all five kept books (asserting the ring wakes),
+  validates every secret text, and marches the boundary with held input
+  to prove the cliffs stop a walker.
+
 ## [0.3.0-alpha] — 2026-07-01
 
 The voyage update.
