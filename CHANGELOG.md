@@ -4,9 +4,44 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
-## [Unreleased]
+## [0.3.0-alpha] — Unreleased
+
+The voyage update.
+
+### Added
+- The rowboat sails. `E` at the dock seats you in it, the mooring knot
+  unties itself, and the enchanted boat rows you across the lake — free to
+  look around the whole way — before gliding up to a jetty on the far
+  shore. The return trip watches the island grow out of the haze.
+- The far shore: a new explorable area noticeably larger than the island.
+  Old-growth forest (every tree bigger than the island's), ferns, mossy
+  fallen logs with mushrooms, a winding stream, and a shoreline of coves
+  beneath a fresh ring of mountains.
+- A worn, cairn-marked trail from the jetty, across an arched footbridge,
+  deep between the trees to the ruin of the First Tower: broken ring
+  walls, spilled columns, a cracked dais, and a portal ring gone cold.
+- The wizard's story, written rather than generated: a boundary stone
+  carved in a worn hand, and the wizard's four-entry journal waiting on
+  the lectern where he left it. `F` leafs through the journal's pages in
+  order.
+- `tests/capture.tscn`: an env-driven camera/spawn harness for
+  movie-maker visual checks (documented in the README).
+
+### Changed
+- The dock prompt is now "Set out for the far shore"; the boat is no
+  longer just scenery.
+- The smoke test now crosses to the forest, validates the journal, and
+  rides the boat's arrival leg end to end.
 
 ### Fixed
+- Walking outdoors was clunky (playtest feedback): the player now walks
+  slopes up to 55° instead of Godot's 45° default and snaps harder to
+  bumpy ground; the plateau's south side is a steady ramp so the path
+  climbs to the tower door instead of hitting a steep lip; and the
+  footbridge banks rise into earthen abutments flush with the deck, so
+  crossing no longer takes a jump. The smoke test now walks both routes
+  with real held input — across the bridge (checking mid-crossing that
+  the player is on the deck, not in the stream) and up to the tower door.
 - Pressing `E` while reading closed the book but the same key press
   immediately took another book down from the shelf under the crosshair,
   so `E` appeared to flip pages just like `F`. The press that closes a

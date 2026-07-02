@@ -9,7 +9,7 @@ config_version=5
 config/name="Isle of Babel"
 config/description="A Myst-like exploration of a wizard's pocket-dimension island."
 run/main_scene="res://scenes/island.tscn"
-config/features=PackedStringArray("4.6")
+config/features=PackedStringArray("4.7")
 config/icon="res://icon.svg"
 
 [autoload]

@@ -6,10 +6,13 @@ extends Node
 var _time := 0.0
 var _stage := 0
 var _test_shelf: Interactable
+var _bridge_west := Vector2.ZERO
+var _bridge_dir := Vector2.ZERO
+var _bridge_deck_y := 0.0
 
 func _process(delta: float) -> void:
 	_time += delta
-	if _time > 19.0:
+	if _time > 52.0:
 		_fail("timed out in stage %d" % _stage)
 	match _stage:
 		0:
@@ -91,6 +94,97 @@ func _process(delta: float) -> void:
 				elif not cs.find_children("", "CharacterBody3D", true, false).is_empty():
 					_fail("title screen should not spawn a player")
 				else:
+					Game.travel("res://scenes/forest.tscn", "jetty")
+		8:
+			if _time > 18.0:
+				_stage = 9
+				_expect_scene("Forest")
+				var p := _expect_player()
+				if p and p.global_position.y < -1.0:
+					_fail("player fell through the forest")
+				if p:
+					var pages := BookLore.journal_pages()
+					if pages.size() < 3:
+						_fail("the wizard's journal has too few pages")
+					for page in pages:
+						for field in ["title", "chapter", "body"]:
+							if String(page[field]).is_empty():
+								_fail("journal page has an empty %s" % field)
+					p.open_book(pages[0], pages)
+					p._flip_page()
+					if p._book_page_i != 1:
+						_fail("F did not leaf to the journal's next page")
+					p.close_book()
+					if String(BookLore.tablet()["body"]).is_empty():
+						_fail("the boundary stone has no inscription")
+					# Walk across the footbridge with real held input: the
+					# deck must meet the banks, no jumping required.
+					var forest := get_tree().current_scene
+					_bridge_west = forest._abutment_b
+					_bridge_dir = (forest._abutment_a - _bridge_west).normalized()
+					_bridge_deck_y = forest._bridge_base
+					var start := _bridge_west - _bridge_dir * 2.0
+					var yaw := atan2(-_bridge_dir.x, -_bridge_dir.y)
+					p.global_transform = Transform3D(Basis.from_euler(Vector3(0, yaw, 0)),
+						Vector3(start.x, forest.height_at(start.x, start.y) + 0.4, start.y))
+					p.velocity = Vector3.ZERO
+					_walk(true)
+		9:
+			if _time > 19.6:
+				_stage = 10
+				var p := _expect_player()
+				# Mid-crossing: on the deck, not wading in the stream below.
+				if p and p.global_position.y < _bridge_deck_y - 0.5:
+					_fail("waded through the stream instead of walking the bridge (y=%.1f)" % p.global_position.y)
+		10:
+			if _time > 22.5:
+				_stage = 11
+				_walk(false)
+				var p := _expect_player()
+				if p:
+					var along := (Vector2(p.global_position.x, p.global_position.z) - _bridge_west).dot(_bridge_dir)
+					if along < 9.0:
+						_fail("could not walk across the footbridge, made it %.1fm" % along)
+					# Ride the arrival leg of the voyage end to end.
+					Game.travel("res://scenes/forest.tscn", "voyage")
+		11:
+			if _time > 27.0:
+				_stage = 12
+				_expect_scene("Forest")
+				var p := _expect_player()
+				if p and p._seat == null:
+					_fail("voyage spawn should seat the player in the boat")
+		12:
+			if _time > 40.0:
+				_stage = 13
+				var p := _expect_player()
+				if p and p._seat != null:
+					_fail("the boat never delivered the player to the jetty")
+				elif p and (p.global_position.z < 70.0 or p.global_position.z > 92.0):
+					_fail("disembarked in the wrong place, z=%.1f" % p.global_position.z)
+				else:
+					Game.travel("res://scenes/island.tscn", "dock")
+		13:
+			if _time > 43.5:
+				_stage = 14
+				_expect_scene("Island")
+				var p := _expect_player()
+				if p:
+					# Walk the path's final climb to the tower door: the
+					# plateau's south side must be a steady ramp, not a lip.
+					var island := get_tree().current_scene
+					p.global_transform = Transform3D(Basis.IDENTITY,
+						Vector3(0, island.height_at(0.0, 8.0) + 0.4, 8.0))
+					p.velocity = Vector3.ZERO
+					_walk(true)
+		14:
+			if _time > 48.0:
+				_stage = 15
+				_walk(false)
+				var p := _expect_player()
+				if p and (p.global_position.z > -4.0 or p.global_position.y < 13.0):
+					_fail("could not walk up to the tower door, stopped at z=%.1f y=%.1f" % [p.global_position.z, p.global_position.y])
+				else:
 					print("SMOKE OK")
 					get_tree().quit(0)
 
@@ -102,6 +196,13 @@ func _press_interact(pressed: bool) -> void:
 	ev.action = "interact"
 	ev.pressed = pressed
 	Input.parse_input_event(ev)
+
+## Hold (or release) the forward key, as if the player were walking.
+func _walk(forward: bool) -> void:
+	if forward:
+		Input.action_press("move_forward")
+	else:
+		Input.action_release("move_forward")
 
 func _expect_scene(expected: String) -> void:
 	var cs := get_tree().current_scene

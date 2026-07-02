@@ -88,6 +88,39 @@ const SENTENCES := [
 	["A footnote in the Hundredth Annal links %s to %s, and the footnote has since gone missing.", "SO"],
 ]
 
+# -- the ruin's fixed texts ---------------------------------------------------
+# The First Tower on the forest shore predates the island. These are written,
+# not generated, because the ruin is where the story stops being hearsay.
+
+static func tablet() -> Dictionary:
+	return {
+		"title": "The Boundary Stone",
+		"author": "cut by an unpracticed hand",
+		"volume": 1,
+		"chapter": "The letters are worn shallow, but the rain has kept them clean",
+		"body": "HERE STOOD THE FIRST TOWER, RAISED ON HONEST GROUND.\n\nI BUILT IT OF STONE BECAUSE STONE IS PATIENT, AND I FILLED IT WITH EVERY BOOK I COULD CARRY, AND THE FOREST WAS PATIENT TOO.\n\nROOTS DO NOT ARGUE. THEY WAIT. LET NO ONE BUILD A LIBRARY ON GROUND THAT REMEMBERS BEING WILD.",
+		"page": 1,
+	}
+
+static func journal_pages() -> Array[Dictionary]:
+	var pages: Array[Dictionary] = []
+	var bodies := [
+		"The tower is finished and I have counted the books twice: four thousand and eleven. A respectable start on everything ever written.\n\nThe forest watched the whole business politely. The ferrymen would not stay past dusk, and would not say why. I put it down to superstition, which was my first error of scholarship on this shore.\n\nThe stream has moved closer to the walls since spring. I measured. Streams do not do that.",
+		"I have given up replanting the path. Whatever I clear by evening the ferns have reconsidered by morning. The lower shelves smell of loam now, and this morning I found a seedling standing in an open dictionary, roots down through UNDERSTORY, quite comfortable.\n\nThe books are not being destroyed. It is stranger than that. They are being read. Slowly, the way roots read the ground — and what the forest reads, it keeps.",
+		"The west wall let go last night, gently, the way snow slides from a roof. No book was harmed. They stood in the rain on their shelves and the rain went around them, which was the forest being courteous, I think, or possessive.\n\nA library of everything cannot live where things grow, because a forest is also a library of everything and it was here first. We are rival collectors, this wood and I. I concede the shore.",
+		"The lake, now. The lake keeps nothing and remembers everything — the one landlord a library could trust.\n\nI have folded a dimension the size of a pocket and lined it with shelves that do not end, and I will hang it inside a tower on an island that I will also make. Islands hold no grudges; I will make sure of it, since I am making the island.\n\nI have charmed the rowboat to know the way, so that the way cannot be lost. When I am done, this journal stays on the lectern. The forest has earned the last word, and I intend it to be mine.",
+	]
+	for i in bodies.size():
+		pages.append({
+			"title": "The Wizard's Journal",
+			"author": "in a quick, certain hand",
+			"volume": 1,
+			"chapter": "Entry the %s" % ["First", "Ninth", "Twentieth", "Last"][i],
+			"body": bodies[i],
+			"page": i + 1,
+		})
+	return pages
+
 static func _pick(arr: Array) -> Variant:
 	return arr[randi() % arr.size()]
 
