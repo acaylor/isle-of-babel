@@ -34,6 +34,14 @@ The voyage update.
   rides the boat's arrival leg end to end.
 
 ### Fixed
+- Walking outdoors was clunky (playtest feedback): the player now walks
+  slopes up to 55° instead of Godot's 45° default and snaps harder to
+  bumpy ground; the plateau's south side is a steady ramp so the path
+  climbs to the tower door instead of hitting a steep lip; and the
+  footbridge banks rise into earthen abutments flush with the deck, so
+  crossing no longer takes a jump. The smoke test now walks both routes
+  with real held input — across the bridge (checking mid-crossing that
+  the player is on the deck, not in the stream) and up to the tower door.
 - Pressing `E` while reading closed the book but the same key press
   immediately took another book down from the shelf under the crosshair,
   so `E` appeared to flip pages just like `F`. The press that closes a

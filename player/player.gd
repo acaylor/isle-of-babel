@@ -41,6 +41,10 @@ var _book_page: Label
 func _ready() -> void:
 	_build_body()
 	_build_hud()
+	# Noisy procedural terrain: allow steeper slopes than the 45° default
+	# and snap harder to the ground so small bumps don't bounce the walk.
+	floor_max_angle = deg_to_rad(55.0)
+	floor_snap_length = 0.35
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 func _build_body() -> void:

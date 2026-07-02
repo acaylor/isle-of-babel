@@ -31,6 +31,11 @@ var _voyage_i := 0
 var _voyage_done: Callable
 var _trail: Array[Vector2] = []
 var _spawns := {}
+var _bridge_yaw := 0.0
+var _bridge_base := 0.0
+var _abutment_a := Vector2.ZERO
+var _abutment_b := Vector2.ZERO
+var _abutment_h := -1e9  # sentinel: abutments off until computed
 
 func _ready() -> void:
 	_noise.seed = 8083
@@ -40,6 +45,7 @@ func _ready() -> void:
 	_detail.seed = 141
 	_detail.frequency = 0.10
 	_make_trail()
+	_plan_bridge()
 
 	_build_environment()
 	_build_terrain()
@@ -84,6 +90,12 @@ func _base_height(x: float, z: float) -> float:
 	h += _detail.get_noise_2d(x * 3.0, z * 3.0) * 0.16 * coast
 	# A level clearing for the ruin to stand in.
 	h = lerpf(h, RUIN_HEIGHT, smoothstep(22.0, 13.0, Vector2(x, z).distance_to(RUIN_POS)))
+	# Earthen abutments rise to meet the footbridge ends, so the deck sits
+	# flush with the banks and the trail walks straight onto it.
+	if _abutment_h > -1e8:
+		var da := Vector2(x, z).distance_to(_abutment_a)
+		var db := Vector2(x, z).distance_to(_abutment_b)
+		h = lerpf(h, _abutment_h, smoothstep(4.5, 1.6, minf(da, db)))
 	return h
 
 func height_at(x: float, z: float) -> float:
@@ -488,17 +500,28 @@ func _build_trail() -> void:
 			Forge.sphere(self, r, cairn_mat, Vector3(cx + rng.randf_range(-0.04, 0.04), y + r * 0.7, cz + rng.randf_range(-0.04, 0.04)), Vector3(1, 0.62, 1))
 			y += r * 0.9
 
+## Decide where the bridge stands before the terrain is built, so the
+## height function can raise its abutments. The deck's walking surface
+## ends up at _bridge_base + ~0.35; the banks are raised to match.
+func _plan_bridge() -> void:
+	var cx := _stream_x(BRIDGE_Z)
+	# The stream runs roughly north-south here; the bridge spans east-west.
+	var tangent := Vector2(_stream_x(BRIDGE_Z + 1.0) - _stream_x(BRIDGE_Z - 1.0), 2.0).normalized()
+	_bridge_yaw = -atan2(tangent.y, tangent.x) + PI / 2.0
+	_bridge_base = maxf(_base_height(cx - 4.2, BRIDGE_Z), _base_height(cx + 4.2, BRIDGE_Z))
+	var span := Vector2(cos(_bridge_yaw), -sin(_bridge_yaw))
+	_abutment_a = Vector2(cx, BRIDGE_Z) + span * 4.6
+	_abutment_b = Vector2(cx, BRIDGE_Z) - span * 4.6
+	_abutment_h = _bridge_base + 0.32  # flush with the deck ends
+
 func _build_bridge() -> void:
 	var wood := Forge.mat(Color(0.38, 0.27, 0.16), 0.95)
 	var wood_dark := Forge.mat(Color(0.26, 0.18, 0.11), 0.95)
 	var cx := _stream_x(BRIDGE_Z)
 	var bridge := Node3D.new()
 	add_child(bridge)
-	var bank_y := maxf(height_at(cx - 4.2, BRIDGE_Z), height_at(cx + 4.2, BRIDGE_Z))
-	bridge.position = Vector3(cx, bank_y, BRIDGE_Z)
-	# The stream runs roughly north-south here; the bridge spans east-west.
-	var tangent := Vector2(_stream_x(BRIDGE_Z + 1.0) - _stream_x(BRIDGE_Z - 1.0), 2.0).normalized()
-	bridge.rotation.y = -atan2(tangent.y, tangent.x) + PI / 2.0
+	bridge.position = Vector3(cx, _bridge_base, BRIDGE_Z)
+	bridge.rotation.y = _bridge_yaw
 	var planks := 9
 	for i in planks:
 		var t := float(i) / (planks - 1) * 2.0 - 1.0

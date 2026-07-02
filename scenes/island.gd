@@ -82,6 +82,11 @@ func height_at(x: float, z: float) -> float:
 	# Keep the walking route from the dock to the tower gentle.
 	var corridor := smoothstep(5.0, 2.0, absf(x)) * smoothstep(62.0, 56.0, z) * smoothstep(-7.0, -2.0, z)
 	h = lerpf(h, smooth_h, corridor * 0.85)
+	# A steady ramp up the plateau's south side, so the path climbs to the
+	# tower door instead of hitting a steep lip just before it.
+	var ramp_h := lerpf(7.3, PLATEAU_HEIGHT, smoothstep(10.0, -5.0, z))
+	var ramp_m := smoothstep(6.5, 3.0, absf(x)) * smoothstep(13.0, 10.0, z)
+	h = lerpf(h, ramp_h, ramp_m)
 	# Flatten a plateau for the tower to stand on.
 	h = lerpf(h, PLATEAU_HEIGHT, smoothstep(12.0, 7.0, tower_dist))
 	return h
@@ -425,7 +430,7 @@ func _build_path() -> void:
 	rng.seed = 555
 	var points: Array[Vector3] = []
 	var z := 56.0
-	while z > -3.0:
+	while z > -4.6:
 		var x := sin(z * 0.18) * 1.6 + rng.randf_range(-0.4, 0.4)
 		points.append(Vector3(x, height_at(x, z) + 0.04, z))
 		z -= 2.6
