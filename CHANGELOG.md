@@ -4,6 +4,50 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
+## [0.4.0-alpha] — Unreleased
+
+The secrets update.
+
+### Added
+- The kept books: five books from the First Tower grew into living trees
+  off the trail, each faintly glowing, each readable — a dictionary the
+  roots kept revising, an atlas the moss corrected, a book of hours the
+  seasons observe, a cookery book with unsettling margins, and a child's
+  primer the forest finished. Returning all five words wakes the cold
+  ring in the ruin: the wizard's last charm, a one-way door home to the
+  jetty. (Progress is per-visit until save/load lands.)
+- The spring glade: follow the stream the wrong way and it ends at its
+  secret source — a waterfall down the boundary rock, a pool ringed in
+  mossy stones, drifting motes of light, and the fifth kept book at the
+  water's edge.
+- The hermit's hollow: a great split tree someone has been living in.
+  The fire is cold, the bedroll rolled, and the unsigned note on the
+  root shelf did not arrive by boat.
+- Natural boundaries: the forest cove is now walled by meandering rock
+  cliffs too steep to climb, running into the lake as headlands, with a
+  bare scree apron where the treeline breaks — no invisible walls, the
+  world ends in stone and water.
+
+### Changed
+- Everything you can touch in the forest got a visual pass: the kept
+  books breathe light through lips of bark, trailing tendrils, moss, and
+  slow-orbiting loose pages; the boundary stone carries rows of worn
+  carving, a chipped crown, and creeping moss; the wizard's journal lies
+  open mid-entry on its lectern, ink lines and ribbon marker and all;
+  the cold ring has shed shards beside a cracked dais circled with worn
+  sigils, and wakes with breathing light and circling sparks; the
+  hermit's camp gained a dead lantern, wax runs, spare books, and a
+  washing line with one forgotten shirt; the rowboat carries a lit,
+  gently pulsing bow lantern and moors to a proper post with a charmed
+  knot. The spring's waterfall pours as a full column with white threads
+  and mist, and every mote in the forest now drifts instead of hanging
+  still.
+- The stream now begins at the spring instead of running off the edge of
+  the map.
+- The smoke test collects all five kept books (asserting the ring wakes),
+  validates every secret text, and marches the boundary with held input
+  to prove the cliffs stop a walker.
+
 ## [0.3.0-alpha] — 2026-07-01
 
 The voyage update.

@@ -12,7 +12,7 @@ var _bridge_deck_y := 0.0
 
 func _process(delta: float) -> void:
 	_time += delta
-	if _time > 52.0:
+	if _time > 62.0:
 		_fail("timed out in stage %d" % _stage)
 	match _stage:
 		0:
@@ -117,9 +117,23 @@ func _process(delta: float) -> void:
 					p.close_book()
 					if String(BookLore.tablet()["body"]).is_empty():
 						_fail("the boundary stone has no inscription")
+					# The secrets: every kept book and the stranger's note
+					# must read, and returning all five must wake the ring.
+					for i in BookLore.KEPT_COUNT:
+						if String(BookLore.kept_book(i)["body"]).is_empty():
+							_fail("kept book %d has no text" % i)
+					if String(BookLore.stranger_note()["body"]).is_empty():
+						_fail("the stranger's note is blank")
+					var forest := get_tree().current_scene
+					for i in BookLore.KEPT_COUNT:
+						forest._collect_kept(i, p)
+					p.close_book()
+					if forest._kept_found.size() != BookLore.KEPT_COUNT:
+						_fail("collecting every kept book did not register")
+					if forest._ring_body.prompt != "Step through the wizard's last door":
+						_fail("returning all five books did not wake the ring")
 					# Walk across the footbridge with real held input: the
 					# deck must meet the banks, no jumping required.
-					var forest := get_tree().current_scene
 					_bridge_west = forest._abutment_b
 					_bridge_dir = (forest._abutment_a - _bridge_west).normalized()
 					_bridge_deck_y = forest._bridge_base
@@ -139,24 +153,41 @@ func _process(delta: float) -> void:
 		10:
 			if _time > 22.5:
 				_stage = 11
-				_walk(false)
 				var p := _expect_player()
 				if p:
 					var along := (Vector2(p.global_position.x, p.global_position.z) - _bridge_west).dot(_bridge_dir)
 					if along < 9.0:
 						_fail("could not walk across the footbridge, made it %.1fm" % along)
+					# March straight at the boundary: the cliffs must stop
+					# a held-forward walk without any invisible wall.
+					var forest := get_tree().current_scene
+					p.global_transform = Transform3D(Basis.from_euler(Vector3(0, -PI / 2.0, 0)),
+						Vector3(119.0, forest.height_at(119.0, -20.0) + 0.4, -20.0))
+					p.velocity = Vector3.ZERO
+					_walk(true)
+		11:
+			if _time > 30.5:
+				_stage = 12
+				_walk(false)
+				var p := _expect_player()
+				# Eight seconds of held forward is ~40m on open ground; the
+				# meandering wall foot sits at 116–149, so anything past 145
+				# means the player crested the boundary.
+				if p and p.global_position.x > 145.0:
+					_fail("walked up and over the boundary cliffs, x=%.1f" % p.global_position.x)
+				else:
 					# Ride the arrival leg of the voyage end to end.
 					Game.travel("res://scenes/forest.tscn", "voyage")
-		11:
-			if _time > 27.0:
-				_stage = 12
+		12:
+			if _time > 35.0:
+				_stage = 13
 				_expect_scene("Forest")
 				var p := _expect_player()
 				if p and p._seat == null:
 					_fail("voyage spawn should seat the player in the boat")
-		12:
-			if _time > 40.0:
-				_stage = 13
+		13:
+			if _time > 48.0:
+				_stage = 14
 				var p := _expect_player()
 				if p and p._seat != null:
 					_fail("the boat never delivered the player to the jetty")
@@ -164,9 +195,9 @@ func _process(delta: float) -> void:
 					_fail("disembarked in the wrong place, z=%.1f" % p.global_position.z)
 				else:
 					Game.travel("res://scenes/island.tscn", "dock")
-		13:
-			if _time > 43.5:
-				_stage = 14
+		14:
+			if _time > 51.5:
+				_stage = 15
 				_expect_scene("Island")
 				var p := _expect_player()
 				if p:
@@ -177,9 +208,9 @@ func _process(delta: float) -> void:
 						Vector3(0, island.height_at(0.0, 8.0) + 0.4, 8.0))
 					p.velocity = Vector3.ZERO
 					_walk(true)
-		14:
-			if _time > 48.0:
-				_stage = 15
+		15:
+			if _time > 56.0:
+				_stage = 16
 				_walk(false)
 				var p := _expect_player()
 				if p and (p.global_position.z > -4.0 or p.global_position.y < 13.0):
