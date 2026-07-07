@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Isle of Babel — a quiet place made entirely of code</title>
+<meta name="description" content="A small, Myst-flavored exploration game in a wizard's pocket dimension. 100% runtime-procedural — the repository is pure text. Built with Godot 4.">
+<meta property="og:title" content="Isle of Babel">
+<meta property="og:description" content="A quiet, Myst-like exploration game in a wizard's pocket dimension. Every mesh, material, and book is generated at runtime.">
+<meta property="og:image" content="https://acaylor.github.io/isle-of-babel/images/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8F%9D%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d1410;
+  --ink-2:#121b15;
+  --parchment:#eae0c8;
+  --parchment-dim:#b9ae93;
+  --moss:#9cc77b;
+  --moss-dim:#5d7a4a;
+  --lantern:#dfa75b;
+  --line:rgba(234,224,200,.14);
+  --serif:'Crimson Pro',Georgia,serif;
+  --display:'Marcellus',Georgia,serif;
+  --mono:'IBM Plex Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ink);
+  color:var(--parchment);
+  font-family:var(--serif);
+  font-size:19px;
+  line-height:1.65;
+  font-weight:300;
+  overflow-x:hidden;
+}
+/* paper grain over everything */
+body::after{
+  content:"";position:fixed;inset:0;pointer-events:none;z-index:50;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+a{color:var(--moss);text-decoration:none;border-bottom:1px solid rgba(156,199,123,.35);transition:color .2s,border-color .2s}
+a:hover{color:#c4e6a8;border-color:#c4e6a8}
+::selection{background:var(--moss-dim);color:var(--parchment)}
+
+/* ---------- hero ---------- */
+.hero{
+  position:relative;min-height:100vh;display:flex;flex-direction:column;
+  justify-content:flex-end;align-items:center;text-align:center;
+  isolation:isolate;padding:0 24px 11vh;
+}
+.hero::before{
+  content:"";position:absolute;inset:0;z-index:-2;
+  background:url(images/hero.png) center 38%/cover no-repeat;
+}
+.hero::after{
+  content:"";position:absolute;inset:0;z-index:-1;
+  background:
+    linear-gradient(to bottom,rgba(13,20,16,.28) 0%,rgba(13,20,16,0) 30%,rgba(13,20,16,.1) 55%,rgba(13,20,16,.92) 88%,var(--ink) 100%),
+    radial-gradient(120% 60% at 50% 100%,rgba(13,20,16,.55),transparent 60%);
+}
+.badge{
+  font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--parchment-dim);border:1px solid var(--line);border-radius:999px;
+  padding:7px 18px;backdrop-filter:blur(3px);background:rgba(13,20,16,.35);
+  animation:rise 1.2s .2s cubic-bezier(.2,.7,.2,1) both;
+}
+.badge b{color:var(--moss);font-weight:500}
+h1{
+  font-family:var(--display);font-weight:400;color:var(--parchment);
+  font-size:clamp(46px,9vw,108px);letter-spacing:.14em;text-indent:.14em;
+  line-height:1.05;margin:22px 0 10px;text-shadow:0 2px 40px rgba(0,0,0,.6);
+  animation:rise 1.2s .35s cubic-bezier(.2,.7,.2,1) both;
+}
+.tagline{
+  font-style:italic;font-size:clamp(18px,2.4vw,24px);color:var(--parchment-dim);
+  animation:rise 1.2s .5s cubic-bezier(.2,.7,.2,1) both;
+}
+.cta{
+  display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:34px;
+  animation:rise 1.2s .65s cubic-bezier(.2,.7,.2,1) both;
+}
+.btn{
+  font-family:var(--mono);font-size:13.5px;letter-spacing:.08em;
+  padding:13px 26px;border:1px solid var(--line);border-radius:2px;
+  color:var(--parchment);background:rgba(13,20,16,.5);backdrop-filter:blur(4px);
+  transition:all .25s;
+}
+.btn:hover{border-color:var(--moss);color:var(--moss);transform:translateY(-2px);box-shadow:0 8px 30px rgba(0,0,0,.4)}
+.btn.primary{background:var(--moss);color:var(--ink);border-color:var(--moss);font-weight:500}
+.btn.primary:hover{background:#c4e6a8;color:var(--ink)}
+@keyframes rise{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+/* drifting motes */
+.mote{position:absolute;border-radius:50%;background:var(--moss);box-shadow:0 0 12px 3px rgba(156,199,123,.5);opacity:0;animation:drift linear infinite;z-index:0}
+@keyframes drift{
+  0%{opacity:0;transform:translateY(0)}
+  12%{opacity:.9}
+  85%{opacity:.5}
+  100%{opacity:0;transform:translateY(-46vh) translateX(4vw)}
+}
+@media (prefers-reduced-motion:reduce){
+  .mote{display:none}
+  .badge,h1,.tagline,.cta,.reveal{animation:none!important;opacity:1!important;transform:none!important;transition:none!important}
+}
+
+/* ---------- shared section chrome ---------- */
+section{max-width:1060px;margin:0 auto;padding:110px 28px 0}
+.kicker{
+  font-family:var(--mono);font-size:12px;letter-spacing:.28em;text-transform:uppercase;
+  color:var(--moss-dim);margin-bottom:14px;
+}
+.kicker::before{content:"❦";color:var(--moss-dim);margin-right:12px}
+h2{
+  font-family:var(--display);font-weight:400;font-size:clamp(30px,4.4vw,44px);
+  letter-spacing:.06em;color:var(--parchment);margin-bottom:28px;
+}
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .9s ease,transform .9s cubic-bezier(.2,.7,.2,1)}
+.reveal.in{opacity:1;transform:none}
+
+/* ---------- premise ---------- */
+.premise{display:grid;grid-template-columns:7fr 5fr;gap:56px;align-items:start}
+.premise .prose p{margin-bottom:1.1em;font-size:20px}
+.premise .prose p:first-of-type::first-letter{
+  font-family:var(--display);font-size:3.4em;float:left;line-height:.82;
+  padding:6px 10px 0 0;color:var(--moss);
+}
+.page{
+  background:linear-gradient(160deg,#efe6cf,#ddd0b0);color:#33291c;
+  padding:38px 34px;border-radius:2px;transform:rotate(1.1deg);
+  box-shadow:0 20px 50px rgba(0,0,0,.5),inset 0 0 60px rgba(120,95,55,.15);
+  font-size:17px;line-height:1.6;
+}
+.page .rubric{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#8a7451;margin-bottom:16px}
+.page dt{font-family:var(--display);letter-spacing:.08em;margin-top:14px}
+.page dd{margin:2px 0 0 0;font-style:italic;color:#4a3b26}
+.page .margin-note{margin-top:20px;padding-top:14px;border-top:1px solid rgba(120,95,55,.35);color:#5d7a4a;font-style:italic;font-size:15.5px}
+
+/* ---------- plates ---------- */
+.plates{max-width:1160px}
+.plate-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:26px}
+figure.plate{position:relative;border:1px solid var(--line);background:var(--ink-2);padding:10px 10px 0;border-radius:2px;transition:transform .35s cubic-bezier(.2,.7,.2,1),box-shadow .35s}
+figure.plate:hover{transform:translateY(-6px) rotate(-.4deg);box-shadow:0 24px 60px rgba(0,0,0,.55)}
+figure.plate img{width:100%;display:block;border-radius:1px;filter:saturate(.96)}
+figure.plate figcaption{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;color:var(--parchment-dim);
+  padding:12px 4px 14px;display:flex;justify-content:space-between;gap:10px;
+}
+figure.plate figcaption em{font-family:var(--serif);font-style:italic;font-size:14px;letter-spacing:0;color:var(--parchment)}
+.plate.w4{grid-column:span 4}.plate.w2{grid-column:span 2}.plate.w3{grid-column:span 3}
+.plate.up{margin-top:-34px}
+@media (max-width:820px){
+  .plate-grid{grid-template-columns:1fr 1fr}
+  .plate.w4,.plate.w2,.plate.w3{grid-column:span 2}
+  .plate.up{margin-top:0}
+  .premise{grid-template-columns:1fr}
+}
+
+/* ---------- chapters (releases) ---------- */
+.chapters{max-width:820px}
+.chapter{
+  display:grid;grid-template-columns:110px 1fr;gap:26px;align-items:baseline;
+  padding:30px 0;border-top:1px solid var(--line);
+}
+.chapter:last-of-type{border-bottom:1px solid var(--line)}
+.chapter .ver{font-family:var(--mono);font-size:13px;color:var(--moss);letter-spacing:.04em}
+.chapter h3{font-family:var(--display);font-weight:400;font-size:23px;letter-spacing:.05em;margin-bottom:6px}
+.chapter h3 a{color:inherit;border:0}
+.chapter h3 a:hover{color:var(--moss)}
+.chapter p{color:var(--parchment-dim);font-size:17.5px}
+.chapter .date{font-family:var(--mono);font-size:11.5px;color:var(--parchment-dim);opacity:.7;letter-spacing:.1em;margin-left:10px}
+@media (max-width:640px){.chapter{grid-template-columns:1fr;gap:6px}}
+
+/* ---------- made of text ---------- */
+.textmade{
+  border:1px solid var(--line);border-radius:3px;background:var(--ink-2);
+  padding:52px 48px;display:grid;grid-template-columns:1fr 1fr;gap:44px;
+}
+.textmade .facts p{margin-bottom:1em;font-size:18.5px}
+.term{
+  font-family:var(--mono);font-size:13.5px;line-height:2.05;color:var(--parchment-dim);
+  background:#0a0f0c;border:1px solid var(--line);border-radius:3px;padding:26px 28px;
+  overflow-x:auto;white-space:pre;
+}
+.term .p{color:var(--moss-dim)}
+.term .ok{color:var(--moss);font-weight:500}
+.term .c{color:#7d7663}
+@media (max-width:820px){.textmade{grid-template-columns:1fr;padding:36px 26px}}
+
+/* ---------- footer ---------- */
+footer{
+  margin-top:130px;padding:46px 28px 60px;border-top:1px solid var(--line);
+  text-align:center;font-size:15.5px;color:var(--parchment-dim);
+}
+footer .fleuron{color:var(--moss-dim);font-size:20px;display:block;margin-bottom:18px}
+footer p{max-width:640px;margin:0 auto .5em}
+footer .fine{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;margin-top:18px;opacity:.75}
+</style>
+</head>
+<body>
+
+<header class="hero" id="top">
+  <!-- drifting motes, like the spring glade's -->
+  <span class="mote" style="left:12%;bottom:18%;width:5px;height:5px;animation-duration:11s;animation-delay:0s"></span>
+  <span class="mote" style="left:26%;bottom:30%;width:3px;height:3px;animation-duration:14s;animation-delay:2s"></span>
+  <span class="mote" style="left:44%;bottom:12%;width:4px;height:4px;animation-duration:12s;animation-delay:5s"></span>
+  <span class="mote" style="left:63%;bottom:26%;width:3px;height:3px;animation-duration:16s;animation-delay:1s"></span>
+  <span class="mote" style="left:78%;bottom:16%;width:5px;height:5px;animation-duration:10s;animation-delay:4s"></span>
+  <span class="mote" style="left:90%;bottom:34%;width:3px;height:3px;animation-duration:15s;animation-delay:7s"></span>
+
+  <div class="badge">v0.4.0-alpha &nbsp;·&nbsp; <b>Godot 4.7</b> &nbsp;·&nbsp; MIT &nbsp;·&nbsp; the repository is 100% text</div>
+  <h1>ISLE OF BABEL</h1>
+  <p class="tagline">A quiet place, made entirely of code.</p>
+  <nav class="cta">
+    <a class="btn primary" href="https://github.com/acaylor/isle-of-babel">Source on GitHub</a>
+    <a class="btn" href="https://github.com/acaylor/isle-of-babel/releases/tag/v0.4.0-alpha">Latest release</a>
+    <a class="btn" href="https://github.com/acaylor/isle-of-babel/blob/main/docs/ARCHITECTURE.md">How it's built</a>
+  </nav>
+</header>
+
+<section class="reveal">
+  <p class="kicker">The premise</p>
+  <h2>A wizard's pocket dimension</h2>
+  <div class="premise">
+    <div class="prose">
+      <p>You arrive by rowboat on a green island adrift in a vast lake, ringed
+      on every horizon by forested mountains. A stone path climbs to the
+      wizard's tower — which is larger inside than out. Its interior is an
+      endless library containing every book ever written, and the shelves
+      genuinely do not end.</p>
+      <p>There is no combat, no timer, and nobody talks to you. The story is
+      told by the things the wizard left behind: a journal open mid-entry on
+      a ruin's lectern, a carved boundary stone, five books a forest refused
+      to give back — and a stranger's note that raises more questions than
+      it answers.</p>
+      <p>Sit in the rowboat and it rows itself across the water to the far
+      shore, where a cairn-marked trail leads under old growth to the ruin
+      of the First Tower: the wizard's failed first library, and the reason
+      the island exists.</p>
+    </div>
+    <aside class="page" aria-label="An excerpt from one of the kept books">
+      <p class="rubric">From “A Dictionary of the Standing Tongue” — kept by the forest</p>
+      <dl>
+        <dt>GROVE, <span style="font-style:italic">n.</span></dt>
+        <dd>A parliament of trees, convened without adjournment.</dd>
+        <dt>PATH, <span style="font-style:italic">n.</span></dt>
+        <dd>A promise the ground makes and the walker keeps. <span style="opacity:.75">A newer hand adds: or the reverse.</span></dd>
+        <dt>WORD, <span style="font-style:italic">n.</span></dt>
+        <dd>The seed-form of a thing. Plant one and stand back.</dd>
+      </dl>
+      <p class="margin-note">The margin here is crowded with tiny green script,
+      all of it the same sentence: we know, we know, we know.</p>
+    </aside>
+  </div>
+</section>
+
+<section class="plates reveal">
+  <p class="kicker">Plates</p>
+  <h2>Views of the pocket dimension</h2>
+  <div class="plate-grid">
+    <figure class="plate w4">
+      <img src="images/jetty.png" alt="The jetty on the forest shore, the rowboat's lantern lit, the island a silhouette on the horizon" loading="lazy">
+      <figcaption><span>PLATE I</span> <em>The far shore, looking home</em></figcaption>
+    </figure>
+    <figure class="plate w2">
+      <img src="images/library.png" alt="The library's entrance chamber, shelves of books surrounding the arch door back to the island" loading="lazy">
+      <figcaption><span>PLATE II</span> <em>The library does not end</em></figcaption>
+    </figure>
+    <figure class="plate w2 up">
+      <img src="images/kept.png" alt="A book glowing green, half-swallowed by the trunk of a living tree" loading="lazy">
+      <figcaption><span>PLATE III</span> <em>A kept book</em></figcaption>
+    </figure>
+    <figure class="plate w4 up">
+      <img src="images/ruin.png" alt="The ruin of the First Tower: a cracked dais, a cold stone ring, and the wizard's journal open on its lectern" loading="lazy">
+      <figcaption><span>PLATE IV</span> <em>The First Tower, and the last word</em></figcaption>
+    </figure>
+    <figure class="plate w3">
+      <img src="images/glade.png" alt="A waterfall pouring into a spring pool at night, motes of light drifting over the water" loading="lazy">
+      <figcaption><span>PLATE V</span> <em>The spring, found the wrong way</em></figcaption>
+    </figure>
+    <figure class="plate w3">
+      <img src="images/bridge.png" alt="An arched wooden footbridge over a winding stream, stepping stones leading toward it through the forest" loading="lazy">
+      <figcaption><span>PLATE VI</span> <em>The trail crosses the stream</em></figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="chapters reveal">
+  <p class="kicker">Chapters</p>
+  <h2>The releases so far</h2>
+  <div class="chapter">
+    <span class="ver">v0.1.0</span>
+    <div>
+      <h3><a href="https://github.com/acaylor/isle-of-babel/releases/tag/v0.1.0-alpha">The pocket dimension opens</a><span class="date">JUNE 2026</span></h3>
+      <p>The island, the tower, the infinite streamed library, and shelves that hand you generated books.</p>
+    </div>
+  </div>
+  <div class="chapter">
+    <span class="ver">v0.2.0</span>
+    <div>
+      <h3><a href="https://github.com/acaylor/isle-of-babel/releases/tag/v0.2.0-alpha">The interactivity update</a><span class="date">JUNE 2026</span></h3>
+      <p>Books open across the screen and read coherently; a paper bird leads you out of the stacks; the crystal folds the world.</p>
+    </div>
+  </div>
+  <div class="chapter">
+    <span class="ver">v0.3.0</span>
+    <div>
+      <h3><a href="https://github.com/acaylor/isle-of-babel/releases/tag/v0.3.0-alpha">The voyage</a><span class="date">JULY 2026</span></h3>
+      <p>The rowboat rows itself across the lake to an old-growth shore, a winding trail, and the ruin of the First Tower — with the wizard's journal waiting on the lectern.</p>
+    </div>
+  </div>
+  <div class="chapter">
+    <span class="ver">v0.4.0</span>
+    <div>
+      <h3><a href="https://github.com/acaylor/isle-of-babel/releases/tag/v0.4.0-alpha">The secrets</a><span class="date">JULY 2026</span></h3>
+      <p>Five kept books glow in living trees; returning every word wakes a door. A hidden spring, a hermit's cold camp, and cliffs instead of invisible walls.</p>
+    </div>
+  </div>
+</section>
+
+<section class="reveal">
+  <p class="kicker">Colophon</p>
+  <h2>Made entirely of text</h2>
+  <div class="textmade">
+    <div class="facts">
+      <p>There are no art assets. Every mesh, material, tree, mountain, book,
+      and page of prose is generated by code at runtime — the repository is
+      scripts, three six-line scenes, one shader, and an SVG icon. Every
+      change to the world is a readable diff.</p>
+      <p>The game tests itself the same way you'd play it: a headless smoke
+      test travels every scene, opens books with simulated key presses,
+      rides the boat, and literally <em>walks</em> the footbridge and the
+      boundary cliffs with held input to prove the world holds.</p>
+      <p>Read <a href="https://github.com/acaylor/isle-of-babel/blob/main/docs/ARCHITECTURE.md">the architecture</a>,
+      <a href="https://github.com/acaylor/isle-of-babel/blob/main/docs/VISION.md">the vision</a>, or
+      <a href="https://github.com/acaylor/isle-of-babel/blob/main/docs/CONTRIBUTING.md">how to contribute</a> —
+      no Godot experience assumed.</p>
+    </div>
+    <div class="term" role="img" aria-label="Terminal output of the smoke test passing"><span class="c"># a fresh checkout, three commands</span>
+<span class="p">$</span> godot --headless --path . --import
+<span class="p">$</span> godot --path .            <span class="c"># play</span>
+<span class="p">$</span> godot --headless --path . \
+    res://tests/smoke.tscn   <span class="c"># prove</span>
+<span class="ok">SMOKE OK</span></div>
+  </div>
+</section>
+
+<footer>
+  <span class="fleuron">❦</span>
+  <p>Development happens on a self-hosted Gitea and is mirrored to
+  <a href="https://github.com/acaylor/isle-of-babel">GitHub</a>, where issues
+  and discussion are welcome.</p>
+  <p>Built with <a href="https://godotengine.org">Godot 4.7</a>, co-developed
+  with Claude in <a href="https://www.anthropic.com/claude-code">Claude Code</a>.</p>
+  <p class="fine">MIT LICENSE · © 2026 ACAYLOR · WHAT THE FOREST READS, IT KEEPS</p>
+</footer>
+
+<script>
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}}),{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
