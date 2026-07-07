@@ -2,6 +2,13 @@
 
 A small, Myst-flavored first-person exploration game built with Godot 4.
 
+**Project site:** [acaylor.github.io/isle-of-babel](https://acaylor.github.io/isle-of-babel/)
+
+> Development happens on a self-hosted Gitea;
+> [github.com/acaylor/isle-of-babel](https://github.com/acaylor/isle-of-babel)
+> is a published mirror. Issues and discussion are welcome on GitHub, but
+> branches and pull requests land on the Gitea side first.
+
 You arrive on a wizard's pocket dimension: a green island adrift in the
 middle of a vast lake, ringed on every horizon by forested mountains. A
 stone path climbs from a wooden dock to the wizard's tower. The tower is
