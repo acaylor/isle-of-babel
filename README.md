@@ -72,6 +72,18 @@ godot --path .
   tell the wizard.
 - Sail home and watch the island grow out of the haze.
 
+## Documentation
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the game is put
+  together: the one-node scene pattern, scene routing, the procedural
+  toolkit, terrain, the streamed library, and the testing tools.
+- [docs/VISION.md](docs/VISION.md) — what this game is trying to be, the
+  story so far, every feature shipped per release, and the parts box of
+  future ideas.
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — how to contribute,
+  assuming no Godot experience: setup, just-enough-Godot, recipes, and the
+  testing house rules.
+
 ## Project layout
 
 ```
