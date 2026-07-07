@@ -4,7 +4,7 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
-## [0.4.0-alpha] — Unreleased
+## [0.4.0-alpha] — 2026-07-06
 
 The secrets update.
 
