@@ -4,6 +4,25 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
+## [0.6.0-alpha] — unreleased
+
+The light through the trees update.
+
+### Added
+- Volumetric fog in the old forest: the sun now shafts through the
+  canopy in visible god-rays, and the portal's glow pools in the misty
+  clearing. The island keeps its cheap exponential haze.
+
+### Changed
+- All three scenes moved from the Filmic tonemapper to AgX, which holds
+  color in the bright sky and around emissive glows instead of washing
+  them out.
+- Screen-space indirect lighting (SSIL) joins SSAO outdoors for contact
+  shading. SDFGI was evaluated and rejected: roughly 10× the frame cost,
+  and its sky occlusion crushed the flat-shaded tree canopies to black.
+- The sun's shadows are softer (shadow blur, blended splits) to match
+  the quiet aesthetic.
+
 ## [0.5.0-alpha] — 2026-07-11
 
 The light on the water update.
