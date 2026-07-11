@@ -3,7 +3,7 @@ extends Node
 ## the spawn point the next scene should place the player at, and the
 ## pause menu.
 
-const VERSION := "0.4.0-alpha"
+const VERSION := "0.5.0-alpha"
 const FADE_OUT := 0.45
 const FADE_IN := 0.7
 

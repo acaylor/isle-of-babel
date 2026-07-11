@@ -318,20 +318,16 @@ func _build_stream() -> void:
 
 func _build_environment() -> void:
 	var env := Environment.new()
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.22, 0.39, 0.58)
-	sky_mat.sky_horizon_color = Color(0.72, 0.75, 0.68)
-	sky_mat.ground_bottom_color = Color(0.10, 0.14, 0.14)
-	sky_mat.ground_horizon_color = Color(0.62, 0.66, 0.60)
-	var sky := Sky.new()
-	sky.sky_material = sky_mat
 	env.background_mode = Environment.BG_SKY
-	env.sky = sky
+	# Heavier cover than the island: the old forest sits under a brooding sky.
+	env.sky = Forge.sky(Color(0.22, 0.39, 0.58), Color(0.72, 0.75, 0.68), Color(0.10, 0.14, 0.14), Color(0.62, 0.66, 0.60), 0.58)
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.68, 0.75, 0.74)
 	env.fog_density = 0.0005
+	# See island.gd: full sky_affect would erase the sky shader's work.
+	env.fog_sky_affect = 0.25
 	env.ssao_enabled = true
 	var we := WorldEnvironment.new()
 	we.environment = env
