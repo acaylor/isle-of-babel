@@ -4,6 +4,27 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
+## [0.5.0-alpha] — unreleased
+
+The light on the water update.
+
+### Added
+- A visual fidelity roadmap (`docs/VISUAL_FIDELITY.md`): six planned
+  rendering improvements, ranked by impact, all within the text-only and
+  seeded-determinism rules.
+- A procedural sky shader shared by the island and the forest: drifting
+  fbm clouds lit against the sun, a sun disc with halo, horizon haze, and
+  per-scene palettes (the old forest sits under heavier cover).
+
+### Changed
+- The lake learned depth: water color now fades shallow→deep by true
+  water-column depth, a noise-broken foam line laps where water meets
+  land (no more hard polygon shoreline), and fine ripples break the sun
+  and sky reflections into glints.
+- Distance fog no longer repaints the entire sky in fog color
+  (`fog_sky_affect`), which had been flattening the heavens to a single
+  pale wash; the horizon keeps its haze.
+
 ## [0.4.0-alpha] — 2026-07-06
 
 The secrets update.

@@ -81,6 +81,20 @@ static func collider_cyl(parent: Node, radius: float, height: float, pos: Vector
 	body.position = pos
 	return body
 
+## A Sky driven by the procedural sky shader — drifting fbm clouds, a sun
+## disc with halo, horizon haze — colored per scene.
+static func sky(top: Color, horizon: Color, ground_bottom: Color, ground_horizon: Color, coverage := 0.45) -> Sky:
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/sky.gdshader")
+	m.set_shader_parameter("top_color", top)
+	m.set_shader_parameter("horizon_color", horizon)
+	m.set_shader_parameter("ground_bottom_color", ground_bottom)
+	m.set_shader_parameter("ground_horizon_color", ground_horizon)
+	m.set_shader_parameter("cloud_coverage", coverage)
+	var s := Sky.new()
+	s.sky_material = m
+	return s
+
 static func omni(parent: Node, color: Color, energy: float, light_range: float, pos: Vector3) -> OmniLight3D:
 	var l := OmniLight3D.new()
 	l.light_color = color

@@ -174,20 +174,16 @@ func _build_water() -> void:
 
 func _build_environment() -> void:
 	var env := Environment.new()
-	var sky_mat := ProceduralSkyMaterial.new()
-	sky_mat.sky_top_color = Color(0.23, 0.41, 0.62)
-	sky_mat.sky_horizon_color = Color(0.74, 0.76, 0.70)
-	sky_mat.ground_bottom_color = Color(0.12, 0.16, 0.18)
-	sky_mat.ground_horizon_color = Color(0.66, 0.69, 0.64)
-	var sky := Sky.new()
-	sky.sky_material = sky_mat
 	env.background_mode = Environment.BG_SKY
-	env.sky = sky
+	env.sky = Forge.sky(Color(0.23, 0.41, 0.62), Color(0.74, 0.76, 0.70), Color(0.12, 0.16, 0.18), Color(0.66, 0.69, 0.64), 0.45)
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.glow_enabled = true
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.72, 0.78, 0.83)
 	env.fog_density = 0.0004
+	# Default 1.0 repaints the whole sky in fog color, erasing the gradient
+	# and clouds; keep just enough for horizon haze.
+	env.fog_sky_affect = 0.2
 	env.ssao_enabled = true
 	var we := WorldEnvironment.new()
 	we.environment = env
