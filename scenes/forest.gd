@@ -138,9 +138,13 @@ func _base_height(x: float, z: float) -> float:
 	var wall := clampf(
 		smoothstep(124.0, 141.0, absf(x) + wob_x) + smoothstep(-124.0, -141.0, z + wob_z),
 		0.0, 1.35)
-	h += wall * 46.0 * (1.0 + 0.22 * _detail.get_noise_2d(x * 0.1, z * 0.1))
+	# The headlands dive under the lake before the terrain border at z=95;
+	# without this taper the walls end in sheer sliced faces standing in
+	# open water, plainly visible from the boat (playtest: "jarring").
+	var lake_taper := smoothstep(94.0, 74.0, z)
+	h += wall * 46.0 * (1.0 + 0.22 * _detail.get_noise_2d(x * 0.1, z * 0.1)) * lake_taper
 	# Past the crest the rock keeps climbing toward the mountains proper.
-	h += smoothstep(142.0, 165.0, maxf(absf(x), -z)) * 30.0
+	h += smoothstep(142.0, 165.0, maxf(absf(x), -z)) * 30.0 * lake_taper
 	h += _noise.get_noise_2d(x, z) * 4.5 * coast
 	h += _detail.get_noise_2d(x, z) * 0.5 * coast
 	h += _detail.get_noise_2d(x * 3.0, z * 3.0) * 0.16 * coast
@@ -389,6 +393,17 @@ func _build_mountains() -> void:
 		mi.position = Vector3(cos(angle) * dist, -8.0, sin(angle) * dist - 30.0)
 		mi.rotation.y = rng.randf() * TAU
 		made += 1
+	# Headland peaks: forested mountains planted over each wall end, so the
+	# boundary rock runs into the feet of a range instead of stopping at the
+	# terrain border, and the approach by boat matches the forested peaks
+	# seen from the island side before the crossing.
+	var headlands: Array[Vector3] = [Vector3(-152.0, -8.0, 52.0), Vector3(154.0, -8.0, 46.0)]
+	for k in headlands.size():
+		var mi := MeshInstance3D.new()
+		mi.mesh = Flora.mountain_mesh(9700 + k, 66.0, 118.0 + k * 14.0, false)
+		add_child(mi)
+		mi.position = headlands[k]
+		mi.rotation.y = k * 2.1
 	# Far haze cones behind them.
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.0

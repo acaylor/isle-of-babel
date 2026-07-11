@@ -20,6 +20,15 @@ The living world update.
   noise-warped bedding bands with occasional oxide seams and pale
   weathering toward the crests — instead of flat gray.
 
+### Fixed
+- The boundary cliffs no longer appear as sliced walls standing in open
+  water during the boat crossing (playtest feedback). The headlands now
+  dive beneath the lake before the terrain ends, and a forested peak
+  rises over each wall end, so the cove reads as the foot of a mountain
+  range from the water — matching the peaks seen from the island side
+  before the crossing. The smoke test now asserts the headlands submerge
+  before the mesh border.
+
 ## [0.6.0-alpha] — 2026-07-11
 
 The light through the trees update.
