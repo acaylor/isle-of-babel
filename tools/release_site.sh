@@ -66,8 +66,11 @@ for line in html.splitlines(keepends=True):
 		line = re.sub(r"v\d+\.\d+\.\d+-alpha", f"v{version}", line)
 	out.append(line)
 html = "".join(out)
-if title and f"releases/tag/v{version}" not in html:
-	short = re.sub(r"(\d+\.\d+\.\d+)-alpha", r"\1", version)
+# Idempotence guard: look for this version's chapter marker specifically.
+# (Checking the release-tag URL is self-defeating: the latest-release
+# button was just stamped with that URL a few lines up.)
+short = re.sub(r"(\d+\.\d+\.\d+)-alpha", r"\1", version)
+if title and f'<span class="ver">v{short}</span>' not in html:
 	date = datetime.date.today().strftime("%B %Y").upper()
 	chapter = (
 		'  <div class="chapter">\n'
@@ -79,7 +82,7 @@ if title and f"releases/tag/v{version}" not in html:
 		"    </div>\n"
 		"  </div>\n"
 	)
-	anchor = html.index('class="chapters"')
+	anchor = html.index('class="chapters')  # matches class="chapters reveal"
 	close = html.index("</section>", anchor)
 	html = html[:close] + chapter + html[close:]
 pathlib.Path(path).write_text(html)
