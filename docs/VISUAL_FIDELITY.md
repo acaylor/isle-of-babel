@@ -30,12 +30,19 @@ at them; include before/after screenshots in the PR.
   `directional_shadow_blend_splits = true`.
   *Outcome: AgX everywhere; SDFGI rejected (~10× frame cost and its sky
   occlusion crushed the flat-shaded canopies to black); SSIL adopted.*
-- [ ] **5. Cliff and mountain surfaces.** The boundary cliffs read as
+- [x] **5. Cliff and mountain surfaces.** The boundary cliffs read as
   untextured gray planes from the lake. Add horizontal strata banding and
   a top-down snow/scree gradient — either a small triplanar shader or
   vertex-color banding in the mesh generator (the pattern `Flora` already
   uses).
-- [ ] **6. Motion.** World-position sine sway in a vertex shader on
+  *Outcome: vertex-color strata (noise-warped bands + oxide seams + crest
+  weathering) in both the forest terrain colors and `Flora.mountain_mesh`;
+  no shader needed.*
+- [x] **6. Motion.** World-position sine sway in a vertex shader on
   canopies and grass; sparse GPUParticles pollen motes drifting through
   the forest light shafts. Route cheap ambient animation through the
   scenes' FX registries.
+  *Outcome: `shaders/sway.gdshader` on all living flora, weighted by
+  mesh-space height so trunks stay planted; pollen implemented as seeded
+  drift motes on the forest's existing FX registry rather than
+  GPUParticles, keeping the world deterministic.*

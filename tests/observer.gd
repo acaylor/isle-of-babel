@@ -105,6 +105,8 @@ func _process(delta: float) -> void:
 				var p := _expect_player()
 				if p and p.global_position.y < -1.0:
 					_fail("player fell through the forest")
+				if int(get_tree().current_scene.get("_pollen_count")) <= 0:
+					_fail("forest has no pollen motes")
 				if p:
 					var pages := BookLore.journal_pages()
 					if pages.size() < 3:
