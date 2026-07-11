@@ -4,6 +4,31 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
+## [0.7.0-alpha] — unreleased
+
+The living world update.
+
+### Added
+- Wind: every tree canopy, bush, fern, and blade of grass now sways,
+  each at its own phase, through a vertex shader weighted by height so
+  trunks stay planted. The world finally breathes.
+- Pollen: sparse luminous motes drift under the forest canopy, thickest
+  along the trail and in the ruin clearing where the light shafts fall.
+
+### Changed
+- The boundary cliffs and the ring mountains wear horizontal strata —
+  noise-warped bedding bands with occasional oxide seams and pale
+  weathering toward the crests — instead of flat gray.
+
+### Fixed
+- The boundary cliffs no longer appear as sliced walls standing in open
+  water during the boat crossing (playtest feedback). The headlands now
+  dive beneath the lake before the terrain ends, and a forested peak
+  rises over each wall end, so the cove reads as the foot of a mountain
+  range from the water — matching the peaks seen from the island side
+  before the crossing. The smoke test now asserts the headlands submerge
+  before the mesh border.
+
 ## [0.6.0-alpha] — 2026-07-11
 
 The light through the trees update.

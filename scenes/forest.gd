@@ -87,6 +87,7 @@ func _ready() -> void:
 	_build_logs()
 	_build_rocks()
 	_build_bushes_and_grass()
+	_build_pollen()
 	_spawn_player()
 
 func _process(delta: float) -> void:
@@ -137,9 +138,13 @@ func _base_height(x: float, z: float) -> float:
 	var wall := clampf(
 		smoothstep(124.0, 141.0, absf(x) + wob_x) + smoothstep(-124.0, -141.0, z + wob_z),
 		0.0, 1.35)
-	h += wall * 46.0 * (1.0 + 0.22 * _detail.get_noise_2d(x * 0.1, z * 0.1))
+	# The headlands dive under the lake before the terrain border at z=95;
+	# without this taper the walls end in sheer sliced faces standing in
+	# open water, plainly visible from the boat (playtest: "jarring").
+	var lake_taper := smoothstep(94.0, 74.0, z)
+	h += wall * 46.0 * (1.0 + 0.22 * _detail.get_noise_2d(x * 0.1, z * 0.1)) * lake_taper
 	# Past the crest the rock keeps climbing toward the mountains proper.
-	h += smoothstep(142.0, 165.0, maxf(absf(x), -z)) * 30.0
+	h += smoothstep(142.0, 165.0, maxf(absf(x), -z)) * 30.0 * lake_taper
 	h += _noise.get_noise_2d(x, z) * 4.5 * coast
 	h += _detail.get_noise_2d(x, z) * 0.5 * coast
 	h += _detail.get_noise_2d(x * 3.0, z * 3.0) * 0.16 * coast
@@ -184,8 +189,19 @@ func _terrain_color(x: float, z: float, h: float, normal_y: float) -> Color:
 	c = c.lerp(Color(0.46, 0.38, 0.26), smoothstep(3.0, 1.1, _trail_dist(x, z)) * 0.75)
 	# Mossy dimness deep inland.
 	c = c.lerp(Color(0.24, 0.34, 0.20), smoothstep(20.0, -60.0, z) * 0.35)
-	# The boundary walls are bare rock above the treeline.
-	c = c.lerp(Color(0.46, 0.44, 0.42), smoothstep(22.0, 36.0, h))
+	# The boundary walls are bare rock above the treeline, banded with
+	# strata so the cliffs read as bedded stone rather than gray planes.
+	var rock_t := smoothstep(22.0, 36.0, h)
+	if rock_t > 0.001:
+		var wobble := _detail.get_noise_2d(x * 0.3, z * 0.3)
+		var band := 0.5 + 0.5 * sin(h * 0.5 + wobble * 5.0)
+		var rock := Color(0.42, 0.40, 0.38).lerp(Color(0.54, 0.50, 0.44), band * 0.75)
+		# An occasional warm oxide seam between beds.
+		var seam := smoothstep(0.82, 1.0, 0.5 + 0.5 * sin(h * 0.16 + wobble * 3.0))
+		rock = rock.lerp(Color(0.49, 0.41, 0.33), seam * 0.5)
+		# Pale weathering toward the crests.
+		rock = rock.lerp(Color(0.58, 0.57, 0.54), smoothstep(55.0, 74.0, h))
+		c = c.lerp(rock, rock_t)
 	return c
 
 func _make_trail() -> void:
@@ -377,6 +393,17 @@ func _build_mountains() -> void:
 		mi.position = Vector3(cos(angle) * dist, -8.0, sin(angle) * dist - 30.0)
 		mi.rotation.y = rng.randf() * TAU
 		made += 1
+	# Headland peaks: forested mountains planted over each wall end, so the
+	# boundary rock runs into the feet of a range instead of stopping at the
+	# terrain border, and the approach by boat matches the forested peaks
+	# seen from the island side before the crossing.
+	var headlands: Array[Vector3] = [Vector3(-152.0, -8.0, 52.0), Vector3(154.0, -8.0, 46.0)]
+	for k in headlands.size():
+		var mi := MeshInstance3D.new()
+		mi.mesh = Flora.mountain_mesh(9700 + k, 66.0, 118.0 + k * 14.0, false)
+		add_child(mi)
+		mi.position = headlands[k]
+		mi.rotation.y = k * 2.1
 	# Far haze cones behind them.
 	var cone := CylinderMesh.new()
 	cone.top_radius = 0.0
@@ -1319,6 +1346,36 @@ func _build_bushes_and_grass() -> void:
 			var basis := Basis.from_euler(Vector3(0, rng.randf() * TAU, 0)).scaled(Vector3(s, s, s))
 			transforms.append(Transform3D(basis, Vector3(x, h - 0.02, z)))
 		_multimesh_of(grasses[v], transforms)
+
+## Sparse pollen: tiny luminous motes adrift under the canopy, thickest
+## along the trail and around the ruin clearing where the light shafts
+## fall. They ride the existing drift-mote registry.
+var _pollen_count := 0
+
+func _build_pollen() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 6174
+	var mesh := SphereMesh.new()
+	mesh.radius = 0.03
+	mesh.height = 0.06
+	mesh.radial_segments = 6
+	mesh.rings = 3
+	var mat := Forge.mat(Color(1.0, 0.95, 0.7), 0.4, Color(1.0, 0.9, 0.55), 1.6)
+	var attempts := 0
+	while attempts < 700 and _pollen_count < 90:
+		attempts += 1
+		var x := rng.randf_range(-110.0, 110.0)
+		var z := rng.randf_range(-100.0, 80.0)
+		# Cluster where the walker goes; a few strays drift elsewhere.
+		var near := minf(_trail_dist(x, z), Vector2(x, z).distance_to(RUIN_POS))
+		if near > 14.0 and rng.randf() < 0.85:
+			continue
+		var h := height_at(x, z)
+		if h < 0.5:
+			continue
+		var mi := Forge.mesh(self, mesh, mat, Vector3(x, h + rng.randf_range(0.6, 3.2), z))
+		_register_mote(mi, rng.randf() * TAU)
+		_pollen_count += 1
 
 # -- player --------------------------------------------------------------------
 

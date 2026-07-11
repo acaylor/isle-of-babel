@@ -105,6 +105,14 @@ func _process(delta: float) -> void:
 				var p := _expect_player()
 				if p and p.global_position.y < -1.0:
 					_fail("player fell through the forest")
+				if int(get_tree().current_scene.get("_pollen_count")) <= 0:
+					_fail("forest has no pollen motes")
+				# AJ playtest: the headlands used to stop in sheer sliced
+				# faces at the terrain border, jarring from the boat. They
+				# must dive under the lake before the mesh runs out.
+				for hx: float in [-140.0, 140.0]:
+					if float(get_tree().current_scene.height_at(hx, 94.0)) > -1.0:
+						_fail("headland at x=%d does not sink below the lake before the terrain border" % int(hx))
 				if p:
 					var pages := BookLore.journal_pages()
 					if pages.size() < 3:

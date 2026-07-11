@@ -30,6 +30,19 @@ static func _finish(st: SurfaceTool, rough := 1.0) -> ArrayMesh:
 	mesh.surface_set_material(0, mat)
 	return mesh
 
+## Finish living flora with the wind-sway shader instead of the static
+## vertex-color material. `start`/`full` are mesh-space heights where sway
+## fades in, so trunks stay planted; `amp` is the displacement at `full`.
+static func _finish_sway(st: SurfaceTool, amp: float, start: float, full: float) -> ArrayMesh:
+	var mesh := st.commit()
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/sway.gdshader")
+	mat.set_shader_parameter("sway_amp", amp)
+	mat.set_shader_parameter("weight_start", start)
+	mat.set_shader_parameter("weight_full", full)
+	mesh.surface_set_material(0, mat)
+	return mesh
+
 static func _vert(st: SurfaceTool, p: Vector3, n: Vector3, c: Color) -> void:
 	st.set_color(c)
 	st.set_normal(n)
@@ -140,7 +153,7 @@ static func pine_mesh(seed_v: int) -> ArrayMesh:
 		var c_tip := leaf.lerp(tip, t)
 		var off := bend * lerpf(1.0, 2.0, t)
 		_cone_layer(st, rng, Vector3(off.x, y, off.z), r, h, c_base, c_tip)
-	return _finish(st)
+	return _finish_sway(st, 0.05, 1.5, 5.2)
 
 static func broadleaf_mesh(seed_v: int, autumn := false) -> ArrayMesh:
 	var rng := _rng(seed_v)
@@ -176,7 +189,7 @@ static func broadleaf_mesh(seed_v: int, autumn := false) -> ArrayMesh:
 			var c := deep.lerp(bright, clampf(dir.y * 0.5 + 0.35 + l * 0.5 + jitter, 0.0, 1.0))
 			return c
 		_blob(st, noise, center, radius, rng.randf_range(0.78, 0.95), 0.22, color_cb)
-	return _finish(st)
+	return _finish_sway(st, 0.06, 1.6, 3.6)
 
 static func bush_mesh(seed_v: int) -> ArrayMesh:
 	var rng := _rng(seed_v)
@@ -189,7 +202,7 @@ static func bush_mesh(seed_v: int) -> ArrayMesh:
 	for i in rng.randi_range(2, 3):
 		var c := Vector3(rng.randf_range(-0.3, 0.3), rng.randf_range(0.25, 0.45), rng.randf_range(-0.3, 0.3))
 		_blob(st, noise, c, rng.randf_range(0.4, 0.65), 0.75, 0.3, color_cb, 6, 8)
-	return _finish(st)
+	return _finish_sway(st, 0.025, 0.2, 0.8)
 
 # -- rocks -------------------------------------------------------------------
 
@@ -246,7 +259,7 @@ static func grass_mesh(seed_v: int, flower := Color(0, 0, 0, 0)) -> ArrayMesh:
 				stem_top + Vector3(cos(qa) * s, 0, sin(qa) * s),
 				stem_top + Vector3(cos(qb) * s, 0, sin(qb) * s),
 				Vector3.UP, Vector3.UP, Vector3.UP, heart, flower, flower)
-	return _finish(st)
+	return _finish_sway(st, 0.035, 0.05, 0.4)
 
 # -- forest floor ------------------------------------------------------------
 
@@ -290,7 +303,7 @@ static func fern_mesh(seed_v: int) -> ArrayMesh:
 				_tri(st, p0, p1.lerp(p0, 0.45), tip_p,
 					Vector3.UP, Vector3.UP, Vector3.UP,
 					mid.lerp(bright, t), c1, deep.lerp(mid, t))
-	return _finish(st)
+	return _finish_sway(st, 0.03, 0.05, 0.45)
 
 ## A fallen, moss-topped log: a tapered trunk lying along +X with broken
 ## end rings, a couple of branch stubs, and a few small mushrooms.
@@ -415,13 +428,18 @@ static func mountain_mesh(seed_v: int, base_radius: float, height: float, snowy:
 	var forest_a := Color(0.16, 0.33, 0.16)
 	var forest_b := Color(0.26, 0.44, 0.20)
 	var rock_c := Color(0.40, 0.38, 0.37)
+	var rock_band := Color(0.51, 0.47, 0.42)
 	var snow_c := Color(0.91, 0.93, 0.96)
 	var color_at := func(i: int, j: int) -> Color:
 		var p: Vector3 = pts[idx.call(i, j)]
 		var up_t := p.y / height
 		var m := mottle.get_noise_3d(p.x, p.y * 2.0, p.z)
 		var c := forest_a.lerp(forest_b, clampf(m * 1.4 + 0.5, 0.0, 1.0))
-		c = c.lerp(rock_c, smoothstep(0.62, 0.85, up_t + m * 0.18))
+		# Horizontal strata across the exposed rock, warped by the mottle
+		# noise so the bands read as bedding planes rather than stripes.
+		var band := 0.5 + 0.5 * sin(p.y * 0.35 + m * 7.0)
+		var rock := rock_c.lerp(rock_band, band * 0.7)
+		c = c.lerp(rock, smoothstep(0.62, 0.85, up_t + m * 0.18))
 		if snowy:
 			c = c.lerp(snow_c, smoothstep(0.74, 0.86, up_t + m * 0.12))
 		return c
