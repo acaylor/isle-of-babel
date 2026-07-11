@@ -48,6 +48,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_stream_cells(false)
 	_bird_process(delta)
+	_candle_process(delta)
 
 # -- shared geometry -------------------------------------------------------
 
@@ -91,11 +92,11 @@ func _build_environment() -> void:
 	env.background_color = Color(0.01, 0.008, 0.006)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.55, 0.45, 0.33)
-	env.ambient_light_energy = 0.4
+	env.ambient_light_energy = 0.55
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.05, 0.035, 0.022)
-	env.fog_density = 0.055
+	env.fog_density = 0.042
 	env.glow_enabled = true
 	var we := WorldEnvironment.new()
 	we.environment = env
@@ -149,6 +150,7 @@ func _build_cell(c: Vector2i) -> void:
 	_build_edge(root, rng, false)
 
 	_build_lamp(root, c)
+	_build_candles(root, c)
 	if c == Vector2i.ZERO:
 		_build_entrance(root)
 	else:
@@ -221,6 +223,52 @@ func _build_lamp(root: Node3D, c: Vector2i) -> void:
 	Forge.sphere(root, 0.18, _lamp_mat, Vector3(0, WALL_H - 1.5, 0))
 	if (c.x + c.y) % 2 == 0:
 		Forge.omni(root, Color(1.0, 0.78, 0.45), 1.1, 11.0, Vector3(0, WALL_H - 1.8, 0))
+
+# -- floating candles --------------------------------------------------------
+# Candles drift above the stacks; enchanted, they never burn down. Seeded
+# separately from the furnishing rng so existing cell layouts stay identical.
+
+var _candles: Array[Dictionary] = []
+var _candle_t := 0.0
+var _wax_mat := Forge.mat(Color(0.93, 0.90, 0.80), 0.6)
+var _flame_mat := Forge.mat(Color(1.0, 0.85, 0.45), 0.3, Color(1.0, 0.72, 0.32), 5.5)
+
+func _build_candles(root: Node3D, c: Vector2i) -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(c.x) * 83492791 + int(c.y) * 52859239 + 7
+	var count := rng.randi_range(3, 5)
+	for i in count:
+		var pivot := Node3D.new()
+		root.add_child(pivot)
+		var base := Vector3(rng.randf_range(-4.2, 4.2), rng.randf_range(2.9, 4.4), rng.randf_range(-4.2, 4.2))
+		# Keep clear of the hanging lamp's chain at the cell center.
+		if Vector2(base.x, base.z).length() < 1.3:
+			base.x += 2.2
+		pivot.position = base
+		var h := rng.randf_range(0.22, 0.40)
+		Forge.cyl(pivot, 0.050, 0.055, h, _wax_mat, Vector3(0, h / 2.0, 0), Vector3.ZERO, 8)
+		Forge.sphere(pivot, 0.045, _flame_mat, Vector3(0, h + 0.07, 0), Vector3(0.75, 1.6, 0.75))
+		var entry := {"node": pivot, "base_y": base.y, "phase": rng.randf() * TAU}
+		# Three flames per cell carry real light; extras are set dressing,
+		# keeping the streamed light count bounded.
+		if i < 3:
+			entry["light"] = Forge.omni(pivot, Color(1.0, 0.76, 0.44), 1.6, 8.5, Vector3(0, h + 0.12, 0))
+		_candles.append(entry)
+
+func _candle_process(delta: float) -> void:
+	_candle_t += delta
+	var alive: Array[Dictionary] = []
+	for e: Dictionary in _candles:
+		var n: Node3D = e["node"]
+		if not is_instance_valid(n):
+			continue  # its cell streamed out
+		alive.append(e)
+		var phase: float = e["phase"]
+		n.position.y = float(e["base_y"]) + sin(_candle_t * 0.9 + phase) * 0.18
+		if e.has("light"):
+			var l: OmniLight3D = e["light"]
+			l.light_energy = 0.95 + sin(_candle_t * 7.0 + phase * 3.0) * 0.09
+	_candles = alive
 
 func _build_furniture(root: Node3D, rng: RandomNumberGenerator) -> void:
 	var roll := rng.randf()

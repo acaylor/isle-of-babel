@@ -12,6 +12,10 @@ The light through the trees update.
 - Volumetric fog in the old forest: the sun now shafts through the
   canopy in visible god-rays, and the portal's glow pools in the misty
   clearing. The island keeps its cheap exponential haze.
+- Floating candles in the library: three to five per gallery drift and
+  bob above the stacks, flames flickering, most casting real light.
+  Enchanted, they never burn down. The library's ambient light and fog
+  were retuned alongside so the shelves read without losing the gloom.
 
 ### Changed
 - All three scenes moved from the Filmic tonemapper to AgX, which holds
