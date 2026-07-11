@@ -4,7 +4,7 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
-## [0.7.0-alpha] — unreleased
+## [0.7.0-alpha] — 2026-07-11
 
 The living world update.
 
