@@ -1,0 +1,14 @@
+# Project-site plates: name | CAP_SCENE | CAP_SPAWN | CAP_CAM | CAP_LOOK
+# Rendered by tools/release_site.sh via tests/capture.tscn. The world is
+# deterministic, so each line reproduces its plate exactly per version.
+# Leave CAP_CAM empty to use the player's view at CAP_SPAWN.
+jetty|res://scenes/forest.tscn||-6,4,68|8,2,100
+library|res://scenes/library.tscn||0,2.2,-2|0,2.4,5
+kept|res://scenes/forest.tscn||22,11.5,-61|30,11,-70
+ruin|res://scenes/forest.tscn||-50,13.5,-74|-58,11.5,-84
+glade|res://scenes/forest.tscn||58,12,-112|58,6,-122
+bridge|res://scenes/forest.tscn||20,4.5,66|29,3.5,52
+approach|res://scenes/island.tscn|voyage||
+candles|res://scenes/library.tscn||0,1.8,20|0,2.2,-20
+godrays|res://scenes/forest.tscn||-44,18,-68|-58,11,-84
+tower-sky|res://scenes/island.tscn||0,6,60|20,80,-80

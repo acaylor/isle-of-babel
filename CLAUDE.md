@@ -74,6 +74,10 @@ CAP_SCENE=res://scenes/forest.tscn CAP_CAM="-44,18,-68" CAP_LOOK="-58,11,-84" \
   `gh-pages` branch (the project site) is pushed to **both** remotes.
 - GitHub releases are recreated manually via `gh release create` after
   tagging (the mirror moves refs, not release objects).
+- After tagging, refresh the project site:
+  `tools/release_site.sh --chapter "Title" "Blurb"` re-renders every plate
+  from `tools/plates.manifest`, stamps the version badge and timeline, and
+  pushes `gh-pages` to both remotes. Framing changes are manifest edits.
 - Playtest feedback from AJ is the primary QA; his reported bugs become
   named regression tests.
 
