@@ -42,6 +42,9 @@ func _process(delta: float) -> void:
 						library.summon_guide_bird()
 					else:
 						_fail("library has no summon_guide_bird")
+					var candles: Variant = library.get("_candles")
+					if not (candles is Array) or (candles as Array).is_empty():
+						_fail("library has no floating candles")
 					# Park a book-shelf interactable right under the crosshair
 					# so the next stages can exercise the E key end to end.
 					var shape := BoxShape3D.new()

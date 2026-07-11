@@ -321,14 +321,26 @@ func _build_environment() -> void:
 	env.background_mode = Environment.BG_SKY
 	# Heavier cover than the island: the old forest sits under a brooding sky.
 	env.sky = Forge.sky(Color(0.22, 0.39, 0.58), Color(0.72, 0.75, 0.68), Color(0.10, 0.14, 0.14), Color(0.62, 0.66, 0.60), 0.58)
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.glow_enabled = true
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.68, 0.75, 0.74)
 	env.fog_density = 0.0005
 	# See island.gd: full sky_affect would erase the sky shader's work.
 	env.fog_sky_affect = 0.25
+	# God-rays: the fog volume is lit per-light, so the sun shafts through
+	# the canopy and the portal glow pools in the clearing. Ambient inject
+	# keeps shadowed fog from going pitch black under the trees.
+	env.volumetric_fog_enabled = true
+	env.volumetric_fog_density = 0.02
+	env.volumetric_fog_albedo = Color(0.76, 0.82, 0.80)
+	env.volumetric_fog_anisotropy = 0.6
+	env.volumetric_fog_length = 96.0
+	env.volumetric_fog_ambient_inject = 0.4
+	env.volumetric_fog_sky_affect = 0.0
 	env.ssao_enabled = true
+	# See island.gd for why SSIL rather than SDFGI.
+	env.ssil_enabled = true
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -338,6 +350,9 @@ func _build_environment() -> void:
 	sun.light_energy = 1.15
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 170.0
+	sun.directional_shadow_blend_splits = true
+	sun.shadow_blur = 1.8
+	sun.light_volumetric_fog_energy = 1.4
 	add_child(sun)
 	sun.rotation_degrees = Vector3(-34, -140, 0)
 

@@ -176,7 +176,7 @@ func _build_environment() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	env.sky = Forge.sky(Color(0.23, 0.41, 0.62), Color(0.74, 0.76, 0.70), Color(0.12, 0.16, 0.18), Color(0.66, 0.69, 0.64), 0.45)
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_mode = Environment.TONE_MAPPER_AGX
 	env.glow_enabled = true
 	env.fog_enabled = true
 	env.fog_light_color = Color(0.72, 0.78, 0.83)
@@ -185,6 +185,10 @@ func _build_environment() -> void:
 	# and clouds; keep just enough for horizon haze.
 	env.fog_sky_affect = 0.2
 	env.ssao_enabled = true
+	# SDFGI was tried here and rejected: ~10x frame cost and its sky
+	# occlusion starves the flat-shaded canopies to near black. SSIL gives
+	# the contact-shading win without fighting the aesthetic.
+	env.ssil_enabled = true
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -194,6 +198,8 @@ func _build_environment() -> void:
 	sun.light_energy = 1.25
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 160.0
+	sun.directional_shadow_blend_splits = true
+	sun.shadow_blur = 1.8
 	add_child(sun)
 	sun.rotation_degrees = Vector3(-38, -125, 0)
 
