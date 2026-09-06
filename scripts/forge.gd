@@ -13,6 +13,13 @@ static func scatter(parent: Node3D, source: Mesh, transforms: Array[Transform3D]
 		if not cells.has(key):
 			cells[key] = []
 		cells[key].append(placement)
+	# Wind moves vertices beyond the undeformed mesh, in local space; pad by
+	# the shader's own amplitude so a stronger breeze widens the bounds
+	# instead of culling cells whose canopies are still on screen.
+	var padded := source.get_aabb().grow(sway_padding(source))
+	# One name per mesh variant: the cell keys repeat across every variant a
+	# scene scatters, and colliding names are what Godot renames to @Node@12.
+	var tag := source.resource_name if not source.resource_name.is_empty() else str(source.get_instance_id())
 	for key: Vector2i in cells:
 		var origin := Vector3((key.x + 0.5) * cell_size, 0.0, (key.y + 0.5) * cell_size)
 		var mm := MultiMesh.new()
@@ -24,15 +31,40 @@ static func scatter(parent: Node3D, source: Mesh, transforms: Array[Transform3D]
 			var placement: Transform3D = cells[key][i]
 			placement.origin -= origin
 			mm.set_instance_transform(i, placement)
-			# Wind moves vertices beyond the undeformed mesh, in local space.
-			var instance_bounds: AABB = placement * source.get_aabb().grow(0.1)
+			var instance_bounds: AABB = placement * padded
 			bounds = instance_bounds if i == 0 else bounds.merge(instance_bounds)
 		mm.custom_aabb = bounds
 		var instance := MultiMeshInstance3D.new()
-		instance.name = "Scatter_%d_%d" % [key.x, key.y]
+		instance.name = "Scatter_%s_%d_%d" % [tag, key.x, key.y]
 		instance.multimesh = mm
 		instance.position = origin
 		parent.add_child(instance)
+
+## Largest wind displacement `source` can reach, in mesh-local units: the
+## `sway_amp` the sway shader actually runs with, not a constant that has to
+## be kept in step with it by hand. Static meshes report 0.0. The shader
+## displaces X by `amp` and Z by `0.7 * amp`, so padding every axis by `amp`
+## is conservative.
+static func sway_padding(source: Mesh) -> float:
+	var pad := 0.0
+	for surface in source.get_surface_count():
+		var shader_mat := source.surface_get_material(surface) as ShaderMaterial
+		if shader_mat == null or shader_mat.shader == null:
+			continue
+		var amp: Variant = shader_mat.get_shader_parameter("sway_amp")
+		# A sway material that never sets its amplitude would be padded by
+		# nothing: the shader's own default is unreadable without a live
+		# renderer, so require the value the material was built with.
+		assert(amp != null or not _declares_sway(shader_mat.shader), "sway material left sway_amp unset")
+		if amp != null:
+			pad = maxf(pad, absf(float(amp)))
+	return pad
+
+static func _declares_sway(shader: Shader) -> bool:
+	for uniform: Dictionary in shader.get_shader_uniform_list():
+		if uniform.get("name", "") == "sway_amp":
+			return true
+	return false
 
 static func mat(color: Color, rough := 0.95, emission := Color.BLACK, emission_energy := 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
