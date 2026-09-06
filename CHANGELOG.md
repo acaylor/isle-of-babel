@@ -4,7 +4,7 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
-## [Unreleased]
+## [0.8.0-alpha] — 2026-09-05
 
 ### Changed
 - Outdoor vegetation uses spatial MultiMesh cells with wind-aware bounds,
