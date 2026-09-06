@@ -1092,17 +1092,7 @@ func _build_hollow() -> void:
 # -- vegetation ----------------------------------------------------------------
 
 func _multimesh_of(mesh: Mesh, transforms: Array[Transform3D]) -> void:
-	if transforms.is_empty():
-		return
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.mesh = mesh
-	mm.instance_count = transforms.size()
-	for i in transforms.size():
-		mm.set_instance_transform(i, transforms[i])
-	var mmi := MultiMeshInstance3D.new()
-	mmi.multimesh = mm
-	add_child(mmi)
+	Forge.scatter(self, mesh, transforms)
 
 func _build_trees() -> void:
 	var rng := RandomNumberGenerator.new()

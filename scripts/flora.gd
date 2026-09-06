@@ -24,6 +24,7 @@ static func _begin() -> SurfaceTool:
 	return st
 
 static func _finish(st: SurfaceTool, rough := 1.0) -> ArrayMesh:
+	st.index()
 	var mesh := st.commit()
 	var mat := Forge.vc_mat(rough)
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -34,6 +35,7 @@ static func _finish(st: SurfaceTool, rough := 1.0) -> ArrayMesh:
 ## vertex-color material. `start`/`full` are mesh-space heights where sway
 ## fades in, so trunks stay planted; `amp` is the displacement at `full`.
 static func _finish_sway(st: SurfaceTool, amp: float, start: float, full: float) -> ArrayMesh:
+	st.index()
 	var mesh := st.commit()
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/sway.gdshader")

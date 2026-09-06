@@ -36,9 +36,13 @@ vec2 ripple_grad(vec2 p) {
 	const vec2 d2 = vec2(-0.51450, 0.85749);
 	const vec2 d3 = vec2(0.19612, -0.98058);
 	vec2 g = vec2(0.0);
-	g += d1 * cos(dot(p, d1) * 0.9 + TIME * 1.5) * 0.050;
-	g += d2 * cos(dot(p, d2) * 1.7 + TIME * 2.1) * 0.055;
-	g += d3 * cos(dot(p, d3) * 3.1 + TIME * 2.6) * 0.045;
+	// Fade frequencies as they approach a pixel's footprint. MSAA alone
+	// cannot filter procedural specular detail near the horizon.
+	vec3 phase = vec3(dot(p, d1) * 0.9, dot(p, d2) * 1.7, dot(p, d3) * 3.1);
+	vec3 resolved = vec3(1.0) - smoothstep(vec3(1.0), vec3(3.0), fwidth(phase));
+	g += d1 * cos(phase.x + TIME * 1.5) * 0.050 * resolved.x;
+	g += d2 * cos(phase.y + TIME * 2.1) * 0.055 * resolved.y;
+	g += d3 * cos(phase.z + TIME * 2.6) * 0.045 * resolved.z;
 	return g;
 }
 
@@ -64,7 +68,11 @@ void fragment() {
 	// Reconstruct the opaque scene's depth under this fragment (Forward+
 	// NDC), then how much water lies between the surface and it.
 	float depth_raw = texture(depth_texture, SCREEN_UV).r;
+	#if CURRENT_RENDERER == RENDERER_COMPATIBILITY
+	vec3 ndc = vec3(SCREEN_UV, depth_raw) * 2.0 - 1.0;
+	#else
 	vec3 ndc = vec3(SCREEN_UV * 2.0 - 1.0, depth_raw);
+	#endif
 	vec4 scene_view = INV_PROJECTION_MATRIX * vec4(ndc, 1.0);
 	scene_view.xyz /= scene_view.w;
 	float water_depth = max(-scene_view.z - -VERTEX.z, 0.0);
@@ -92,7 +100,10 @@ void fragment() {
 	col = mix(col, foam_color, foam * 0.75);
 
 	ALBEDO = col;
-	ROUGHNESS = 0.14 + foam * 0.5;
+	// Unresolved ripples still scatter light: broaden the distant highlight
+	// instead of making filtered water look like a perfectly smooth mirror.
+	float distant_roughness = smoothstep(0.3, 2.0, length(fwidth(world_pos.xz)));
+	ROUGHNESS = 0.14 + distant_roughness * 0.12 + foam * 0.5;
 	METALLIC = 0.0;
 	SPECULAR = 0.45;
 	ALPHA = mix(0.72, 0.95, df);

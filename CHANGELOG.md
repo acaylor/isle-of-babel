@@ -4,6 +4,20 @@ All notable changes to Isle of Babel are documented here. The format is
 based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 releases are tagged on the `main` branch.
 
+## [Unreleased]
+
+### Changed
+- Outdoor vegetation uses spatial MultiMesh cells with wind-aware bounds,
+  allowing off-screen regions to be culled independently.
+- Nature meshes reuse identical vertices without changing their triangles,
+  vertex colors, or authored normals.
+- Lake ripples filter subpixel frequencies and broaden distant highlights;
+  depth reconstruction also accounts for the Compatibility renderer.
+
+### Added
+- Spatial batching regression checks and an optional frame-time/render-counter
+  benchmark in the existing capture harness. See `docs/PERFORMANCE.md`.
+
 ## [0.7.0-alpha] — 2026-07-11
 
 The living world update.

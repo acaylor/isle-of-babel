@@ -2,6 +2,38 @@ class_name Forge
 ## Static helpers for building procedural geometry. Everything in the game
 ## is assembled at runtime from these, so no binary assets live in the repo.
 
+## MultiMeshes are culled as a whole. Local cells keep a visible tree from
+## submitting every tree of its variant across the map. Keep full silhouettes
+## at every distance (including the tower balcony and boat crossings).
+static func scatter(parent: Node3D, source: Mesh, transforms: Array[Transform3D], cell_size := 48.0) -> void:
+	assert(cell_size > 0.0)
+	var cells: Dictionary[Vector2i, Array] = {}
+	for placement in transforms:
+		var key := Vector2i(floori(placement.origin.x / cell_size), floori(placement.origin.z / cell_size))
+		if not cells.has(key):
+			cells[key] = []
+		cells[key].append(placement)
+	for key: Vector2i in cells:
+		var origin := Vector3((key.x + 0.5) * cell_size, 0.0, (key.y + 0.5) * cell_size)
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = source
+		mm.instance_count = cells[key].size()
+		var bounds := AABB()
+		for i in mm.instance_count:
+			var placement: Transform3D = cells[key][i]
+			placement.origin -= origin
+			mm.set_instance_transform(i, placement)
+			# Wind moves vertices beyond the undeformed mesh, in local space.
+			var instance_bounds: AABB = placement * source.get_aabb().grow(0.1)
+			bounds = instance_bounds if i == 0 else bounds.merge(instance_bounds)
+		mm.custom_aabb = bounds
+		var instance := MultiMeshInstance3D.new()
+		instance.name = "Scatter_%d_%d" % [key.x, key.y]
+		instance.multimesh = mm
+		instance.position = origin
+		parent.add_child(instance)
+
 static func mat(color: Color, rough := 0.95, emission := Color.BLACK, emission_energy := 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
