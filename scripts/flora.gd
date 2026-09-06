@@ -23,8 +23,10 @@ static func _begin() -> SurfaceTool:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	return st
 
-static func _finish(st: SurfaceTool, rough := 1.0) -> ArrayMesh:
+static func _finish(st: SurfaceTool, label: String, rough := 1.0) -> ArrayMesh:
+	st.index()
 	var mesh := st.commit()
+	mesh.resource_name = label
 	var mat := Forge.vc_mat(rough)
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	mesh.surface_set_material(0, mat)
@@ -33,8 +35,10 @@ static func _finish(st: SurfaceTool, rough := 1.0) -> ArrayMesh:
 ## Finish living flora with the wind-sway shader instead of the static
 ## vertex-color material. `start`/`full` are mesh-space heights where sway
 ## fades in, so trunks stay planted; `amp` is the displacement at `full`.
-static func _finish_sway(st: SurfaceTool, amp: float, start: float, full: float) -> ArrayMesh:
+static func _finish_sway(st: SurfaceTool, label: String, amp: float, start: float, full: float) -> ArrayMesh:
+	st.index()
 	var mesh := st.commit()
+	mesh.resource_name = label
 	var mat := ShaderMaterial.new()
 	mat.shader = load("res://shaders/sway.gdshader")
 	mat.set_shader_parameter("sway_amp", amp)
@@ -153,7 +157,7 @@ static func pine_mesh(seed_v: int) -> ArrayMesh:
 		var c_tip := leaf.lerp(tip, t)
 		var off := bend * lerpf(1.0, 2.0, t)
 		_cone_layer(st, rng, Vector3(off.x, y, off.z), r, h, c_base, c_tip)
-	return _finish_sway(st, 0.05, 1.5, 5.2)
+	return _finish_sway(st, "pine_%d" % seed_v, 0.05, 1.5, 5.2)
 
 static func broadleaf_mesh(seed_v: int, autumn := false) -> ArrayMesh:
 	var rng := _rng(seed_v)
@@ -189,7 +193,7 @@ static func broadleaf_mesh(seed_v: int, autumn := false) -> ArrayMesh:
 			var c := deep.lerp(bright, clampf(dir.y * 0.5 + 0.35 + l * 0.5 + jitter, 0.0, 1.0))
 			return c
 		_blob(st, noise, center, radius, rng.randf_range(0.78, 0.95), 0.22, color_cb)
-	return _finish_sway(st, 0.06, 1.6, 3.6)
+	return _finish_sway(st, "broadleaf_%d" % seed_v, 0.06, 1.6, 3.6)
 
 static func bush_mesh(seed_v: int) -> ArrayMesh:
 	var rng := _rng(seed_v)
@@ -202,7 +206,7 @@ static func bush_mesh(seed_v: int) -> ArrayMesh:
 	for i in rng.randi_range(2, 3):
 		var c := Vector3(rng.randf_range(-0.3, 0.3), rng.randf_range(0.25, 0.45), rng.randf_range(-0.3, 0.3))
 		_blob(st, noise, c, rng.randf_range(0.4, 0.65), 0.75, 0.3, color_cb, 6, 8)
-	return _finish_sway(st, 0.025, 0.2, 0.8)
+	return _finish_sway(st, "bush_%d" % seed_v, 0.025, 0.2, 0.8)
 
 # -- rocks -------------------------------------------------------------------
 
@@ -220,7 +224,7 @@ static func rock_mesh(seed_v: int, mossy: float) -> ArrayMesh:
 		var moss_t := clampf((dir.y - 0.25) * 1.6, 0.0, 1.0) * clampf(l * 2.0 - 0.55, 0.0, 1.0) * mossy
 		return c.lerp(moss, moss_t)
 	_blob(st, noise, Vector3.ZERO, 1.0, rng.randf_range(0.62, 0.8), 0.34, color_cb, 8, 11)
-	return _finish(st)
+	return _finish(st, "rock_%d" % seed_v)
 
 # -- grass and flowers -------------------------------------------------------
 
@@ -259,7 +263,7 @@ static func grass_mesh(seed_v: int, flower := Color(0, 0, 0, 0)) -> ArrayMesh:
 				stem_top + Vector3(cos(qa) * s, 0, sin(qa) * s),
 				stem_top + Vector3(cos(qb) * s, 0, sin(qb) * s),
 				Vector3.UP, Vector3.UP, Vector3.UP, heart, flower, flower)
-	return _finish_sway(st, 0.035, 0.05, 0.4)
+	return _finish_sway(st, "grass_%d" % seed_v, 0.035, 0.05, 0.4)
 
 # -- forest floor ------------------------------------------------------------
 
@@ -303,7 +307,7 @@ static func fern_mesh(seed_v: int) -> ArrayMesh:
 				_tri(st, p0, p1.lerp(p0, 0.45), tip_p,
 					Vector3.UP, Vector3.UP, Vector3.UP,
 					mid.lerp(bright, t), c1, deep.lerp(mid, t))
-	return _finish_sway(st, 0.03, 0.05, 0.45)
+	return _finish_sway(st, "fern_%d" % seed_v, 0.03, 0.05, 0.45)
 
 ## A fallen, moss-topped log: a tapered trunk lying along +X with broken
 ## end rings, a couple of branch stubs, and a few small mushrooms.
@@ -381,7 +385,7 @@ static func log_mesh(seed_v: int) -> ArrayMesh:
 				m_base + Vector3(cos(a0) * cap_r, m_h - 0.005, sin(a0) * cap_r),
 				m_base + Vector3(cos(a1) * cap_r, m_h - 0.005, sin(a1) * cap_r),
 				Vector3.UP, Vector3.UP, Vector3.UP, cap_c, cap_c * 0.75, cap_c * 0.75)
-	return _finish(st)
+	return _finish(st, "log_%d" % seed_v)
 
 # -- mountains ---------------------------------------------------------------
 
@@ -461,4 +465,4 @@ static func mountain_mesh(seed_v: int, base_radius: float, height: float, snowy:
 			var cd: Color = color_at.call(i + 1, j)
 			_tri(st, pts[a], pts[b], pts[c], na, nb, nc, ca, cb, cc)
 			_tri(st, pts[a], pts[c], pts[d], na, nc, nd, ca, cc, cd)
-	return _finish(st)
+	return _finish(st, "mountain_%d" % seed_v)
